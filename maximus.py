@@ -59,7 +59,7 @@ def set_feh_icon(window):
     gdk_window.set_icon_list([pixbuf])
 
 
-def process_window(screen, window):
+def on_window_opened(screen, window):
     window.connect('state-changed', maximus)
     if window.get_class_group().get_res_class() == "feh":
         set_feh_icon(window)
@@ -67,6 +67,6 @@ def process_window(screen, window):
 if __name__ == "__main__":
     pygtk.require('2.0')
     screen = wnck.screen_get_default()
-    screen.connect("window_opened", process_window)
+    screen.connect("window_opened", on_window_opened)
     gtk.main()
 
