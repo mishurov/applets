@@ -32,8 +32,6 @@ WM Daemon
     :alt: tray applets screenshot
     :align: center
 
-WM daemon
----------
 1. Acts as **Maximus**. On every "maximize" event undecorates window and turns on decorations when window being restored.
 2. Adds icon (tray and window title) for every new **feh** window.
 
