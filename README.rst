@@ -37,6 +37,11 @@ WM Daemon
 
 **Note:** you can use "mouse_right = maximize_restore" in **tint2rc** file to restore maximized windows with mouse.
 
+Hot Corners
+===========
+Daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manual/group__XCB__Record__API.html. Executes commands on mouse clicks on edges of screen. I use right click on top to exit fullscreen mode and clicks on right and left edges to switch between workspaces.
+
+
 Drafts
 ======
 Directory **drafts** contains various attempts to make applets with gtk3 python binding, using subprocess to run background daemons, handle UNIX signals in gtk3 and so on.
