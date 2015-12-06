@@ -21,9 +21,9 @@ Tray applets
     :alt: tray applets screenshot
     :align: center
 
-**Keyboard applet** uses ctypes and calls to native X11 library with XKB extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). Renders text with Cairo.
-
 **Volume applet** uses official python binding to alsa (python-pyalsa) http://www.alsa-project.org/ instead of python-alsaaudio, where you have to recreate every time mixer to get real volume value (not cached one).
+
+**Keyboard applet** uses ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
 
 WM Daemon
 =========
