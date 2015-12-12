@@ -1,8 +1,6 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+#!/usr/bin/python2
 
-
-# Copyright (c) Alexander Mishurov. All rights reserved.
+# Copyright (c) 2015 Alexander Mishurov. All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following
 # conditions are met:
@@ -28,7 +26,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 import re
 import ctypes
 import ctypes.util
@@ -45,6 +42,7 @@ FONT_SIZE = 18
 ICON_SIZE = 22
 Y_OFFSET = 16
 POLL_TIMEOUT=100
+EXIT_LABEL = "Exit"
 
 XKB_MAJOR_VER = 1
 XKB_MINOR_VER = 0
@@ -199,11 +197,13 @@ class xcb_generic_event_t(ctypes.Structure):
 class KeyboardIcon(object):
     def __init__(self):
         signal.signal(signal.SIGINT, self._exit)
+        self._init_menu()
         self._init_xcb_xkb()
         self._init_xkb_groups()
         self._draw_langs()
         self.icon = gtk.StatusIcon()
         self.icon.connect('activate', self.activate_icon)
+        self.icon.connect('popup-menu', self.popup_menu_icon)
         self._init_xkb_handler()
         self.update_icon()
         self.icon.set_visible(True)
@@ -381,6 +381,17 @@ class KeyboardIcon(object):
         self.icon.set_from_pixbuf(
             self.langs[group]
         )
+
+    def popup_menu_icon(self, widget, event_button, event_time):
+        self.menu.popup(None, None, None,
+                        event_button, event_time)
+
+    def _init_menu(self):
+        self.menu = gtk.Menu()
+        close_item = gtk.MenuItem(EXIT_LABEL)
+        close_item.connect("activate", self._exit)
+        self.menu.append(close_item)
+        close_item.show()
 
     def _draw_langs(self):
         langs = []
