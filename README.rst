@@ -21,15 +21,15 @@ Tray applets
     :alt: tray applets screenshot
     :align: center
 
-**Volume applet** uses official python binding to alsa (python-pyalsa) http://www.alsa-project.org/ instead of python-alsaaudio, where you have to recreate every time mixer to get real volume value (not cached one).
+**Volume applet** uses gtk2 and official python binding to alsa (python-pyalsa) http://www.alsa-project.org/ instead of python-alsaaudio, where you have to recreate every time mixer to get real volume value (not cached one). Reload mixer necessary when sink is changed, for example after bluetooth headphones connect.
 
-**Keyboard applet** uses ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
+**Keyboard applet** uses gtk2, ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
 
 WM Daemon
 =========
 
 .. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/maximus.png
-    :alt: tray applets screenshot
+    :alt: feh screenshot
     :align: center
 
 1. Acts as **Maximus**. On every "maximize" event undecorates window and turns on decorations when window being restored.
@@ -40,6 +40,15 @@ WM Daemon
 Hot Corners
 ===========
 Daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manual/group__XCB__Record__API.html. Executes commands on mouse clicks on edges of screen. I use right click on top to exit fullscreen mode and clicks on right and left edges to switch between workspaces.
+
+Calendar
+========
+
+.. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/calendar.png
+    :alt: calendar screenshot
+    :align: center
+
+Simple gtk3 Calendar application. I use it on click on clock in tint2.
 
 
 Drafts
