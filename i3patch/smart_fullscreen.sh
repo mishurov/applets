@@ -33,7 +33,7 @@ fullscreen_disable () {
     fi
 }
 
-is_fullscreen() {
+is_fullscreen () {
     con_type=$(echo "$1" | awk '{print $1}')
     is_fullscreen=$(echo "$1" | awk '{print $2}')
     if [ "$con_type" != "workspace" -a "$is_fullscreen" = 1 ] ; then
