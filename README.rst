@@ -58,6 +58,7 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
 
 .. code-block:: bash
 
+    git clone https://github.com/i3/i3
     cd i3
     git checkout 4.10.4
     git apply ../files/add_zoom_i3_4.10.4.patch
