@@ -1,10 +1,10 @@
 #!/bin/sh
 
 if ( i3-msg zoom 3>&1 1>&2- 2>&3- ) | grep -q "\^\^"
-then 
-    fullscreen_cmd=fullscreen
-else 
-    fullscreen_cmd=zoom
+then
+    maximize_action=fullscreen
+else
+    maximize_action=zoom
 fi
 
 get_workspace_name () {
@@ -16,20 +16,20 @@ get_workspace_name () {
 fullscreen_enable () {
     # i3-msg bar hidden_state hide
     # i3-msg bar mode hide
-    i3-msg $1 $fullscreen_cmd enable
-    if [ $fullscreen_cmd = "zoom" ] ; then
+    i3-msg $1 $maximize_action enable
+    if [ $maximize_action = "zoom" ] ; then
         i3-msg $1 rename workspace to "$(get_workspace_name)*Z"
     fi
 }
 
 fullscreen_disable () {
     # i3-msg bar mode dock
-    i3-msg $1 $fullscreen_cmd disable
-    if [ $fullscreen_cmd = "zoom" ] && \
+    i3-msg $1 $maximize_action disable
+    if [ $maximize_action = "zoom" ] && \
     get_workspace_name | grep -q "\*Z"
     then
         i3-msg $1 rename workspace to \
-        "$(get_workspace_name| head -c -3)"
+        "$(get_workspace_name | head -c -3)"
     fi
 }
 
@@ -44,7 +44,7 @@ is_fullscreen() {
 
 focused_data=$(i3-msg -t get_tree | jq "recurse(.nodes[]) \
     | select(.focused == true) \
-    | \"\(.type) \(.${fullscreen_cmd}_mode) \(.layout) \(.id)\" " | tr -d '"')
+    | \"\(.type) \(.${maximize_action}_mode) \(.layout) \(.id)\" " | tr -d '"')
 
 if is_fullscreen "$focused_data" ; then
     fullscreen_disable
@@ -55,7 +55,7 @@ child_id=$(echo "$focused_data" | awk '{print $4}')
 
 parent_data=$(i3-msg -t get_tree | jq "recurse(.nodes[]) \
     | select(contains({ nodes: [{id: $child_id}] })) \
-    | \"\(.type) \(.${fullscreen_cmd}_mode) \(.layout) \(.id)\" " | tr -d '"')
+    | \"\(.type) \(.${maximize_action}_mode) \(.layout) \(.id)\" " | tr -d '"')
 parent_id=$(echo "$parent_data" | awk '{print $4}')
 
 if is_fullscreen "$parent_data" ; then
@@ -67,7 +67,6 @@ fi
 
 con_type=$(echo "$parent_data" | awk '{print $1}')
 parent_layout=$(echo "$parent_data" | awk '{print $3}')
-
 
 if [ "$con_type" != "workspace" \
    -a "$parent_layout" = "tabbed" \
