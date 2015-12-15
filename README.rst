@@ -80,10 +80,10 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
 
     git clone https://github.com/mishurov/applets
     cd applets/i3patch
-    mkdir -p /usr/local/portage/x11-wm/i3
-    cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
-    cp -r ./files /usr/local/portage/x11-wm/i3
-    ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
+    sudo mkdir -p /usr/local/portage/x11-wm/i3
+    sudo cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
+    sudo cp -r ./files /usr/local/portage/x11-wm/i3
+    sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
 
 
 Drafts
