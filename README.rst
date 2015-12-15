@@ -60,6 +60,8 @@ i3 wm zoom patch
 
 Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script (**smart_fullscreen.sh**) which zooms/fullscreens (in or out depending on state) whole stacked and tabbed layouts instead of particular focused container
 
+**Note:** Patch is only for 4.10.4 version, for newer versions it needs to be slightly changed - mostly in refactored i3's "render" function. 4.10.4 now is newest stable version in Gentoo packages, current i3's "next" git branch was buggy when I tested it for personal use, so patches for newer versions should be later. 
+
 **Make** (no uninstall target https://faq.i3wm.org/question/5175/uninstall-from-sources/)
 
 .. code-block:: bash
