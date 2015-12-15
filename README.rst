@@ -54,6 +54,24 @@ i3-wm zoom patch
 ================
 Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script which zooms/fullscreens whole stacked and tabbed layouts instead of particular focused container
 
+Make (no uninstall target)
+---------------------
+.. code-block:: bash
+    $ cd i3
+    $ git checkout 4.10.4
+    $ git apply ../files/add_zoom_i3_4.10.4.patch
+    $ make
+    $ sudo make install
+
+Gentoo (local ebuild)
+---------------------
+.. code-block:: bash
+    $ mkdir -p /usr/local/portage/x11-wm/i3
+    $ cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
+    $ cp -r ./files /usr/local/portage/x11-wm/i3
+    $ ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild \
+    $ manifest clean merge   $ brew install httpie
+
 Drafts
 ======
 Directory **drafts** contains various attempts to make applets with gtk3 python binding, using subprocess to run background daemons, handle UNIX signals in gtk3 and so on.
