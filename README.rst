@@ -50,6 +50,9 @@ Calendar
 
 Simple gtk3 Calendar application. I use it on click on clock in tint2.
 
+i3-wm zoom patch
+================
+Enable tmux-like "zoom" mode - maximize container and don't hide i3bar. Also script witch zooms/fullscreens whole stacked and tabbed layouts instead of particular focused container
 
 Drafts
 ======

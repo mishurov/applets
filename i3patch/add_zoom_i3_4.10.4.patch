@@ -1,0 +1,300 @@
+diff --git a/include/commands.h b/include/commands.h
+index 780a9e8..fa21c6d 100644
+--- a/include/commands.h
++++ b/include/commands.h
+@@ -193,6 +193,12 @@ void cmd_focus(I3_CMD);
+ void cmd_fullscreen(I3_CMD, char *action, char *fullscreen_mode);
+ 
+ /**
++ * Implementation of 'zoom enable|disable|toggle'.
++ *
++ */
++void cmd_zoom(I3_CMD, const char *action);
++
++/**
+  * Implementation of 'move <direction> [<pixels> [px]]'.
+  *
+  */
+diff --git a/include/con.h b/include/con.h
+index b025ada..680ed16 100644
+--- a/include/con.h
++++ b/include/con.h
+@@ -88,6 +88,12 @@ Con *con_parent_with_orientation(Con *con, orientation_t orientation);
+ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode);
+ 
+ /**
++ * Returns the first zoom node below this node.
++ *
++ */
++Con *con_get_zoom_con(Con *con);
++
++/**
+  * Returns true if the container is internal, such as __i3_scratch
+  *
+  */
+@@ -166,6 +172,24 @@ void con_detach(Con *con);
+ void con_fix_percent(Con *con);
+ 
+ /**
++ * Toggles zoom mode for the given container.
++ *
++ */
++void con_toggle_zoom(Con *con);
++
++/**
++ * Enables zoom mode for the given container.
++ *
++ */
++void con_enable_zoom(Con *con);
++
++/**
++ * Disables zoom mode for the given container.
++ *
++ */
++void con_disable_zoom(Con *con);
++
++/**
+  * Toggles fullscreen mode for the given container. Fullscreen mode will not be
+  * entered when there already is a fullscreen container on this workspace.
+  *
+diff --git a/include/data.h b/include/data.h
+index cec571e..b14d418 100644
+--- a/include/data.h
++++ b/include/data.h
+@@ -578,6 +578,9 @@ struct Con {
+     TAILQ_HEAD(swallow_head, Match) swallow_head;
+ 
+     fullscreen_mode_t fullscreen_mode;
++
++    bool zoom_mode;
++
+     /* layout is the layout of this container: one of split[v|h], stacked or
+      * tabbed. Special containers in the tree (above workspaces) have special
+      * layouts like dockarea or output.
+diff --git a/parser-specs/commands.spec b/parser-specs/commands.spec
+index 315a921..b68204f 100644
+--- a/parser-specs/commands.spec
++++ b/parser-specs/commands.spec
+@@ -29,6 +29,7 @@ state INITIAL:
+   'kill' -> KILL
+   'open' -> call cmd_open()
+   'fullscreen' -> FULLSCREEN
++  'zoom' -> ZOOM
+   'split' -> SPLIT
+   'floating' -> FLOATING
+   'mark' -> MARK
+@@ -179,6 +180,10 @@ state FULLSCREEN_COMPAT:
+   end
+       -> call cmd_fullscreen("toggle", "output")
+ 
++# zoom enable|disable|toggle
++state ZOOM:
++  action = 'enable', 'disable', 'toggle'
++      -> call cmd_zoom($action)
+ # split v|h|vertical|horizontal
+ state SPLIT:
+   direction = 'horizontal', 'vertical', 'v', 'h'
+diff --git a/src/commands.c b/src/commands.c
+index 9d5275d..5fc1f68 100644
+--- a/src/commands.c
++++ b/src/commands.c
+@@ -1463,6 +1463,34 @@ void cmd_fullscreen(I3_CMD, char *action, char *fullscreen_mode) {
+ }
+ 
+ /*
++ * Implementation of 'zoom enable|disable|toggle'.
++ *
++ */
++void cmd_zoom(I3_CMD, const char *action) {
++    DLOG("%s zoom on container\n", action);
++    HANDLE_EMPTY_MATCH;
++
++    owindow *current;
++    TAILQ_FOREACH(current, &owindows, owindows) {
++
++        DLOG("setting zoom for container = %p / %s\n", current->con, current->con->name);
++
++        bool zoom = false;
++        if (strcmp(action, "enable") == 0)
++            zoom = true;
++        else if (strcmp(action, "disable") == 0)
++            zoom = false;
++        else if (strcmp(action, "toggle") == 0)
++            zoom = !current->con->zoom_mode;
++
++        current->con->zoom_mode = zoom;
++    }
++
++    cmd_output->needs_tree_render = true;
++    ysuccess(true);
++}
++
++/*
+  * Implementation of 'move <direction> [<pixels> [px]]'.
+  *
+  */
+diff --git a/src/con.c b/src/con.c
+index b610b0c..974a49e 100644
+--- a/src/con.c
++++ b/src/con.c
+@@ -385,6 +385,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
+     return NULL;
+ }
+ 
++/*
++ * Returns the first zoom node below this node.
++ *
++ */
++Con *con_get_zoom_con(Con *con) {
++    Con *current, *child;
++
++    TAILQ_HEAD(bfs_head, bfs_entry) bfs_head = TAILQ_HEAD_INITIALIZER(bfs_head);
++    struct bfs_entry *entry = smalloc(sizeof(struct bfs_entry));
++    entry->con = con;
++    TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++
++    while (!TAILQ_EMPTY(&bfs_head)) {
++        entry = TAILQ_FIRST(&bfs_head);
++        current = entry->con;
++        if (current != con && current->zoom_mode == true) {
++            /* empty the queue */
++            while (!TAILQ_EMPTY(&bfs_head)) {
++                entry = TAILQ_FIRST(&bfs_head);
++                TAILQ_REMOVE(&bfs_head, entry, entries);
++                free(entry);
++            }
++            return current;
++        }
++
++        TAILQ_REMOVE(&bfs_head, entry, entries);
++        free(entry);
++
++        TAILQ_FOREACH(child, &(current->nodes_head), nodes) {
++            entry = smalloc(sizeof(struct bfs_entry));
++            entry->con = child;
++            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++        }
++
++        TAILQ_FOREACH(child, &(current->floating_head), floating_windows) {
++            entry = smalloc(sizeof(struct bfs_entry));
++            entry->con = child;
++            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++        }
++    }
++
++    return NULL;
++}
++
+ /**
+  * Returns true if the container is internal, such as __i3_scratch
+  *
+@@ -580,6 +624,54 @@ void con_toggle_fullscreen(Con *con, int fullscreen_mode) {
+ }
+ 
+ /*
++ * Toggles zoom mode for the given container.
++ *
++ */
++void con_toggle_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE) {
++        DLOG("You cannot make a workspace fullscreen.\n");
++        return;
++    }
++
++    DLOG("toggling zoom for %p / %s\n", con, con->name);
++
++    if (con->zoom_mode == false)
++        con_enable_zoom(con);
++    else
++        con_disable_zoom(con);
++}
++
++void con_enable_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE) {
++        DLOG("You cannot make a workspace zoom.\n");
++        return;
++    }
++
++    DLOG("enable fullscreen for %p / %s\n", con, con->name);
++
++    if (con->zoom_mode == true) {
++        DLOG("zoom already enabled for %p / %s\n", con, con->name);
++        return;
++    }
++    con->zoom_mode = true;
++}
++
++void con_disable_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE) {
++        DLOG("You cannot make a workspace zoom.\n");
++        return;
++    }
++
++    DLOG("disabling fullscreen for %p / %s\n", con, con->name);
++
++    if (con->zoom_mode == false) {
++        DLOG("zoom already disabled for %p / %s\n", con, con->name);
++        return;
++    }
++    con->zoom_mode = false;
++}
++
++/*
+  * Sets the specified fullscreen mode for the given container, sends the
+  * “fullscreen_mode” event and changes the XCB fullscreen property of the
+  * container’s window, if any.
+diff --git a/src/ipc.c b/src/ipc.c
+index 8fed75f..5e171b8 100644
+--- a/src/ipc.c
++++ b/src/ipc.c
+@@ -400,6 +400,9 @@ void dump_node(yajl_gen gen, struct Con *con, bool inplace_restart) {
+     ystr("fullscreen_mode");
+     y(integer, con->fullscreen_mode);
+ 
++    ystr("zoom_mode");
++    y(integer, con->zoom_mode);
++
+     ystr("floating");
+     switch (con->floating) {
+         case FLOATING_AUTO_OFF:
+diff --git a/src/render.c b/src/render.c
+index d7d5766..438ace1 100644
+--- a/src/render.c
++++ b/src/render.c
+@@ -248,6 +248,7 @@ void render_con(Con *con, bool render_fullscreen) {
+         }
+     }
+ 
++
+     if (con->layout == L_OUTPUT) {
+         /* Skip i3-internal outputs */
+         if (con_is_internal(con))
+@@ -333,6 +334,20 @@ void render_con(Con *con, bool render_fullscreen) {
+     } else {
+         /* FIXME: refactor this into separate functions: */
+         Con *child;
++
++        /* check zoom nodes */
++        Con *zoom = NULL;
++        if (con->type != CT_OUTPUT && children > 0) {
++            zoom = con_get_zoom_con(con);
++        }
++
++        if (zoom) {
++            zoom->rect = rect;
++            x_raise_con(zoom);
++            render_con(zoom, false);
++            return;
++        }
++
+         TAILQ_FOREACH(child, &(con->nodes_head), nodes) {
+             assert(children > 0);
+ 
+@@ -438,6 +453,7 @@ void render_con(Con *con, bool render_fullscreen) {
+             i++;
+         }
+ 
++
+         /* in a stacking or tabbed container, we ensure the focused client is raised */
+         if (con->layout == L_STACKED || con->layout == L_TABBED) {
+             TAILQ_FOREACH_REVERSE(child, &(con->focus_head), focus_head, focused)
