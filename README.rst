@@ -55,6 +55,7 @@ i3-wm zoom patch
 Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script which zooms/fullscreens whole stacked and tabbed layouts instead of particular focused container
 
 **Make (no uninstall target)**
+
 .. code-block:: bash
 
     $ cd i3
@@ -65,6 +66,7 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
 
 
 **Gentoo (local ebuild)**
+
 .. code-block:: bash
 
     $ mkdir -p /usr/local/portage/x11-wm/i3
