@@ -11,6 +11,7 @@ Dependencies (Gentoo)
 * dev-python/pygtk
 * dev-python/pyalsa (for volume applet)
 * dev-python/libwnck-python (for wm daemon)
+* app-misc/jq (for i3 wm shell scripts, parse output)
 
 **Note:** All applications use Python2. For example: Gentoo starts **python3** by default, to run applet, run **python2 /path/to/script.py**.
 
@@ -50,19 +51,21 @@ Calendar
 
 Simple gtk3 Calendar application. I use it on click on clock in tint2.
 
-i3-wm zoom patch
+i3 wm zoom patch
 ================
 
 .. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/i3_patch.png
     :alt: i3_patch screenshot
     :align: center
 
-Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script which zooms/fullscreens whole stacked and tabbed layouts instead of particular focused container
+Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script (**smart_fullscreen.sh**) which zooms/fullscreens (in or out depending on state) whole stacked and tabbed layouts instead of particular focused container
 
 **Make (no uninstall target)**
 
 .. code-block:: bash
 
+    git clone https://github.com/mishurov/applets
+    cd applets/i3patch
     git clone https://github.com/i3/i3
     cd i3
     git checkout 4.10.4
@@ -75,6 +78,8 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
 
 .. code-block:: bash
 
+    git clone https://github.com/mishurov/applets
+    cd applets/i3patch
     mkdir -p /usr/local/portage/x11-wm/i3
     cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
     cp -r ./files /usr/local/portage/x11-wm/i3
