@@ -86,6 +86,7 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
     sudo cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
     sudo cp -r ./files /usr/local/portage/x11-wm/i3
     sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
+    echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
 
 
 Drafts

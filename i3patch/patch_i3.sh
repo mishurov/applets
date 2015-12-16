@@ -16,3 +16,4 @@ cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
 cp -r ./files /usr/local/portage/x11-wm/i3
 ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild \
 manifest clean merge
+echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
