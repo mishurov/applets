@@ -58,7 +58,8 @@ i3 wm zoom patch
     :alt: i3_patch screenshot
     :align: center
 
-Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script (**smart_fullscreen.sh**) which zooms/fullscreens (in or out depending on state) whole stacked and tabbed layouts instead of particular focused container
+Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script (**smart_fullscreen.sh**) which zooms/fullscreens (in or out depending on state) whole stacked and tabbed layouts instead of particular focused container.
+Daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can run it in i3 config 'exec_always --no-startup-id python2 ~/.config/i3/scripts/zoom_bar_d.py', 'exec_always' instead 'exec' because on reloading i3 ipc-socket may be changed.
 
 **Note:** Patch is only for 4.10.4 version, for newer versions it needs to be slightly changed - mostly in refactored i3's "render" function. 4.10.4 now is newest stable version in Gentoo packages, current i3's "next" git branch was buggy when I tested it for personal use, so patches for newer versions should be later. 
 
@@ -87,6 +88,8 @@ Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar.
     sudo cp -r ./files /usr/local/portage/x11-wm/i3
     sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
     echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
+
+
 
 
 Drafts

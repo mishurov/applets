@@ -17,23 +17,23 @@ fullscreen_enable () {
     # i3-msg bar hidden_state hide
     # i3-msg bar mode hide
     i3-msg $1 $maximize_action enable
-    if [ $maximize_action = "zoom" ] ; then
-        i3-msg $1 rename workspace to "$(get_workspace_name)*Z"
-    fi
+    #if [ $maximize_action = "zoom" ] ; then
+    #    i3-msg $1 rename workspace to "$(get_workspace_name)*Z"
+    #fi
 }
 
 fullscreen_disable () {
     # i3-msg bar mode dock
     i3-msg $1 $maximize_action disable
-    if [ $maximize_action = "zoom" ] && \
-    get_workspace_name | grep -q "\*Z"
-    then
-        i3-msg $1 rename workspace to \
-        "$(get_workspace_name | head -c -3)"
-    fi
+    #if [ $maximize_action = "zoom" ] && \
+    #get_workspace_name | grep -q "\*Z"
+    #then
+    #    i3-msg $1 rename workspace to \
+    #    "$(get_workspace_name | head -c -3)"
+    #fi
 }
 
-is_fullscreen () {
+is_fullscreen() {
     con_type=$(echo "$1" | awk '{print $1}')
     is_fullscreen=$(echo "$1" | awk '{print $2}')
     if [ "$con_type" != "workspace" -a "$is_fullscreen" = 1 ] ; then
