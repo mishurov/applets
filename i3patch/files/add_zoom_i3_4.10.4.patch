@@ -95,10 +95,10 @@ index 315a921..b68204f 100644
  state SPLIT:
    direction = 'horizontal', 'vertical', 'v', 'h'
 diff --git a/src/commands.c b/src/commands.c
-index 9d5275d..5fc1f68 100644
+index 9d5275d..ba9e87a 100644
 --- a/src/commands.c
 +++ b/src/commands.c
-@@ -1463,6 +1463,34 @@ void cmd_fullscreen(I3_CMD, char *action, char *fullscreen_mode) {
+@@ -1463,6 +1463,30 @@ void cmd_fullscreen(I3_CMD, char *action, char *fullscreen_mode) {
  }
  
  /*
@@ -111,18 +111,14 @@ index 9d5275d..5fc1f68 100644
 +
 +    owindow *current;
 +    TAILQ_FOREACH(current, &owindows, owindows) {
-+
 +        DLOG("setting zoom for container = %p / %s\n", current->con, current->con->name);
-+
-+        bool zoom = false;
-+        if (strcmp(action, "enable") == 0)
-+            zoom = true;
-+        else if (strcmp(action, "disable") == 0)
-+            zoom = false;
-+        else if (strcmp(action, "toggle") == 0)
-+            zoom = !current->con->zoom_mode;
-+
-+        current->con->zoom_mode = zoom;
++        if (strcmp(action, "toggle") == 0) {
++            con_toggle_zoom(current->con);
++        } else if (strcmp(action, "enable") == 0) {
++            con_enable_zoom(current->con);
++        } else if (strcmp(action, "disable") == 0) {
++            con_disable_zoom(current->con);
++        }
 +    }
 +
 +    cmd_output->needs_tree_render = true;
@@ -134,7 +130,7 @@ index 9d5275d..5fc1f68 100644
   *
   */
 diff --git a/src/con.c b/src/con.c
-index b610b0c..974a49e 100644
+index b610b0c..ca249ff 100644
 --- a/src/con.c
 +++ b/src/con.c
 @@ -385,6 +385,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
@@ -188,7 +184,7 @@ index b610b0c..974a49e 100644
  /**
   * Returns true if the container is internal, such as __i3_scratch
   *
-@@ -580,6 +624,54 @@ void con_toggle_fullscreen(Con *con, int fullscreen_mode) {
+@@ -580,6 +624,56 @@ void con_toggle_fullscreen(Con *con, int fullscreen_mode) {
  }
  
  /*
@@ -215,13 +211,14 @@ index b610b0c..974a49e 100644
 +        return;
 +    }
 +
-+    DLOG("enable fullscreen for %p / %s\n", con, con->name);
++    DLOG("enable zoom for %p / %s\n", con, con->name);
 +
 +    if (con->zoom_mode == true) {
 +        DLOG("zoom already enabled for %p / %s\n", con, con->name);
 +        return;
 +    }
 +    con->zoom_mode = true;
++    ipc_send_window_event("zoom_mode", con);
 +}
 +
 +void con_disable_zoom(Con *con) {
@@ -237,6 +234,7 @@ index b610b0c..974a49e 100644
 +        return;
 +    }
 +    con->zoom_mode = false;
++    ipc_send_window_event("zoom_mode", con);
 +}
 +
 +/*
