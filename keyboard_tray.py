@@ -35,6 +35,7 @@ import gtk
 from gtk import gdk
 import gobject
 import cairo
+import platform
 
 
 FONT_FACE = "Ubuntu"
@@ -43,6 +44,7 @@ ICON_SIZE = 22
 Y_OFFSET = 16
 POLL_TIMEOUT=100
 EXIT_LABEL = "Exit"
+DEFAULT_GROUPS = ['en', 'ru']
 
 XKB_MAJOR_VER = 1
 XKB_MINOR_VER = 0
@@ -294,8 +296,11 @@ class KeyboardIcon(object):
         return True
 
     def _init_xkb_groups(self):
-        names = self._get_group_names()
-        groups = self._parse_group_names(names)
+        if platform.system() == "FreeBSD":
+            groups = DEFAULT_GROUPS
+        else:
+            names = self._get_group_names()
+            groups = self._parse_group_names(names)
         self.xkb_groups = groups
 
     def _get_group_names(self):
