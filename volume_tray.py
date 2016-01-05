@@ -156,8 +156,8 @@ class SoundIcon(object):
     def redirect_mouse(self, widget, event, name, child):
         parent_allocation = widget.get_allocation()
         allocation = child.get_allocation()
-        event.x -= allocation.x
-        event.y -= allocation.y
+        event.x -= allocation.x - parent_allocation.x
+        event.y -= allocation.y - parent_allocation.y
         event.x_root -= allocation.x
         event.y_root -= allocation.y
         child.emit(name, event)
