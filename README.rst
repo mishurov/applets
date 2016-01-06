@@ -89,7 +89,16 @@ Daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can run it in
     sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
     echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
 
+**FreeBSD** (custom port)
 
+.. code-block:: bash
+
+    git clone https://github.com/mishurov/applets
+    cd applets/i3patch
+    sudo cp -r ./files ./freebsd/
+    cd ./freebsd
+    make install clean
+    # and place "freebsd" directory to your sources location
 
 
 Drafts
