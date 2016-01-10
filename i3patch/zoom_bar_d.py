@@ -11,24 +11,35 @@ import socket
 
 ZOOMED_MARK = "*Z"
 
+FNULL = open(os.devnull, 'w')
+
 
 class I3Connection(object):
     MAGIC = 'i3-ipc'
     _struct_header = '<%dsII' % len(MAGIC.encode('utf-8'))
     _struct_header_size = struct.calcsize(_struct_header)
 
+    def check_output(self, cmd, shell=False):
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE,
+            #stderr=FNULL,
+            env=os.environ.copy(),
+            shell=shell
+        )
+        return process.communicate()[0]
+
     def _check_zoom_enabled(self):
-        out = subprocess.check_output(["i3-msg", "zoom"])
+        out = self.check_output(["i3-msg", "zoom"])
         if "^^^" in out:
             print "Zoom isn't enabled"
             exit()
 
     def _check_and_kill_another_instance(self):
         script_name = os.path.basename(__file__)
-        cmd = 'ps -ef | grep "python.*%s" | grep -v grep' % script_name
-        ps = subprocess.check_output(cmd, shell=True)
+        cmd = 'ps ax | grep "python.*%s.*" | grep -v grep' % script_name
+        ps = self.check_output(cmd, shell=True)
         for line in ps.splitlines():
-            pid = int(line.split()[1])
+            pid = int(line.split()[0])
             if pid != os.getpid():
                 os.kill(pid, signal.SIGTERM)
 
@@ -129,11 +140,13 @@ class I3Connection(object):
             if self.find_any_in_tree(ws_branch, 'zoom_mode', 1) \
                 and not name.endswith(ZOOMED_MARK):
                 self.command(
-                    'rename workspace to %s%s' % (name, ZOOMED_MARK)
+                    'rename workspace %s to %s%s' % (name, name, ZOOMED_MARK)
                 )
             else:
                 if name.endswith(ZOOMED_MARK):
-                    self.command('rename workspace to %s' % name[:-2])
+                    self.command(
+                        'rename workspace %s to %s' % name, name[:-2]
+                    )
 
     def remark_all(self):
         self.unmark_all()
