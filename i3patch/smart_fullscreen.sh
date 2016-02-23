@@ -43,7 +43,7 @@ is_fullscreen() {
 }
 
 focused_data=$(i3-msg -t get_tree | jq "recurse(.nodes[]) \
-    | select(.focused == true) \
+    | select(.focused == true) 
     | \"\(.type) \(.${maximize_action}_mode) \(.layout) \(.id)\" " | tr -d '"')
 
 if is_fullscreen "$focused_data" ; then
@@ -55,7 +55,7 @@ child_id=$(echo "$focused_data" | awk '{print $4}')
 
 parent_data=$(i3-msg -t get_tree | jq "recurse(.nodes[]) \
     | select(contains({ nodes: [{id: $child_id}] })) \
-    | \"\(.type) \(.${maximize_action}_mode) \(.layout) \(.id)\" " | tr -d '"')
+    | \"\(.type) \(.${maximize_action}_mode) \(.layout) \(.id) \(.nodes | length)\" " | tr -d '"')
 parent_id=$(echo "$parent_data" | awk '{print $4}')
 
 if is_fullscreen "$parent_data" ; then
@@ -67,6 +67,9 @@ fi
 
 con_type=$(echo "$parent_data" | awk '{print $1}')
 parent_layout=$(echo "$parent_data" | awk '{print $3}')
+children=$(echo "$parent_data" | awk '{print $5}')
+
+echo "CHI" $children
 
 if [ "$con_type" != "workspace" \
    -a "$parent_layout" = "tabbed" \
@@ -78,4 +81,9 @@ then
     exit 0
 fi
 
-fullscreen_enable
+if ! [ "$maximize_action" = "zoom" \
+       -a "$con_type" = "workspace" \
+       -a "$children" -le 1 ]
+then
+  fullscreen_enable
+fi
