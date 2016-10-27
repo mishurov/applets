@@ -43,6 +43,7 @@ src_prepare() {
 	sed -e 's/FALSE/false/' -i src/handlers.c || die #546444
 	epatch_user #471716
 	epatch "${FILESDIR}/add_zoom_i3_4.10.4.patch"
+	epatch "${FILESDIR}/workspace_switch_i3_4.10.4.patch"
 }
 
 src_compile() {
