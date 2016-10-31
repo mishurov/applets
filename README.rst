@@ -9,9 +9,9 @@ Dependencies (Gentoo)
 
 * dev-python/pygobject
 * dev-python/pygtk
-* dev-python/pyalsa (for volume applet)
-* dev-python/libwnck-python (for wm daemon)
-* app-misc/jq (for i3 wm shell scripts, parse output)
+* dev-python/libwnck-python
+* x11-libs/libwnck
+* app-misc/jq
 
 **Note:** All applications use Python2. For example: Gentoo starts **python3** by default, to run applet, run **python2 /path/to/script.py**.
 

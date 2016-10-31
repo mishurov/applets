@@ -1,16 +1,46 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
+
+# Copyright (c) Alexander Mishurov. All rights reserved.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following
+# conditions are met:
+
+# 1. Redistributions of source code must retain the above
+# copyright notice, this list of conditions and the following disclaimer
+
+# 2. Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with
+# the distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 import signal
 import subprocess
 import ctypes
 import ctypes.util
 
 # commands to run on right mouse click
-LMB_TOP_CMD = []
-RMB_TOP_CMD = ["sh", "./.config/i3/scripts/smart_fullscreen.sh"]
-RMB_RIGHT_CMD =  ["i3-msg", "workspace", "next"]
-RMB_LEFT_CMD =  ["i3-msg", "workspace", "prev"]
+RMB_TOP_CMD = ["echo", "top"]
+RMB_RIGHT_CMD =  ["echo", "right"]
+RMB_LEFT_CMD =  ["echo", "left"]
 
 # width (height) of clickable area
-TOP_THRESHOLD = 0
+TOP_THRESHOLD = 2
 RIGHT_THRESHOLD = 2
 LEFT_THRESHOLD = 2
 
@@ -220,11 +250,6 @@ class HotCornersApp(object):
            return "left"
         return None
 
-    def handle_lbm(self, event):
-        area = self.get_area(event.root_x, event.root_y)
-        if RMB_TOP_CMD and area == "top":
-            subprocess.call(LMB_TOP_CMD)
-
     def handle_rbm(self, event):
         area = self.get_area(event.root_x, event.root_y)
         if RMB_TOP_CMD and area == "top":
@@ -239,15 +264,13 @@ class HotCornersApp(object):
             data,
             ctypes.POINTER(xcb_generic_reply_t)
         ).contents
-        if response.response_type == XCB_BUTTON_RELEASE:
+        if response.response_type == XCB_BUTTON_RELEASE \
+           and response.pad0 == 3:
             button_event = ctypes.cast(
                 data,
                 ctypes.POINTER(xcb_button_event_t)
             ).contents
-            if response.pad0 == 1 and LMB_TOP_CMD:
-                self.handle_lbm(button_event)
-            elif response.pad0 == 3:
-                self.handle_rbm(button_event)
+            self.handle_rbm(button_event)
 
     def poll(self):
         while True:
@@ -259,7 +282,7 @@ class HotCornersApp(object):
 
             if reply.contents.client_swapped:
                 self.xcb_record.free(reply)
-                print("Swapped bytes not implemented")
+                print "Swapped bytes not implemented"
                 self._exit()
 
             if reply.contents.category == XRecordFromServer:
@@ -282,7 +305,7 @@ class HotCornersApp(object):
         cookie = self.xcb.xcb_query_extension(
             self.conn,
             ctypes.c_ushort(6),
-            ctypes.c_char_p(b"RECORD")
+            ctypes.c_char_p("RECORD")
         )
         self.xcb.xcb_query_extension_reply.restype = ctypes.POINTER(
             xcb_query_extension_reply_t
@@ -293,7 +316,7 @@ class HotCornersApp(object):
         present = reply.contents.present
         self.xcb.free(reply)
         if not present:
-            print("No RECORD extension")
+            print "No RECORD extension"
             self._exit()
         xcb_record_location = ctypes.util.find_library('xcb-record')
         self.xcb_record = ctypes.CDLL(xcb_record_location)
@@ -329,7 +352,7 @@ class HotCornersApp(object):
         err = self.xcb.xcb_request_check(self.conn, cookie)
         if err:
             self.xcb_xkb.free(err)
-            print("Cant initialize event handler")
+            print "Cant initialize event handler"
             self._exit()
 
         self.record_cookie = self.xcb_record.xcb_record_enable_context(
