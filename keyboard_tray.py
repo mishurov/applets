@@ -15,7 +15,7 @@ from gi.repository import GdkPixbuf
 
 
 FONT_FACE = "Ubuntu"
-FONT_SIZE = 17
+FONT_SIZE = 18
 ICON_SIZE = 22
 Y_OFFSET = 15
 POLL_TIMEOUT=100
@@ -363,8 +363,7 @@ class KeyboardIcon(object):
         )
 
     def popup_menu_icon(self, widget, event_button, event_time):
-        self.menu.popup(None, None, None,
-                        event_button, event_time)
+        self.menu.popup(None, None, None, None, 0, event_time)
 
     def _init_menu(self):
         self.menu = Gtk.Menu()
