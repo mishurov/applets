@@ -1,25 +1,50 @@
+#!/usr/bin/python2
+
+# Copyright (c) 2015 Alexander Mishurov. All rights reserved.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following
+# conditions are met:
+
+# 1. Redistributions of source code must retain the above
+# copyright notice, this list of conditions and the following disclaimer
+
+# 2. Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with
+# the distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import re
 import ctypes
 import ctypes.util
-
+import signal
+import pygtk
+import gtk
+from gtk import gdk
+import gobject
 import cairo
-
-import gi
-gi.require_version('Gtk', '3.0')
-
-from gi.repository import GObject
-from gi.repository import GLib
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
+import platform
 
 
 FONT_FACE = "Ubuntu"
-FONT_SIZE = 17
+FONT_SIZE = 18
 ICON_SIZE = 22
-Y_OFFSET = 15
+Y_OFFSET = 16
 POLL_TIMEOUT=100
 EXIT_LABEL = "Exit"
+DEFAULT_GROUPS = ['en', 'ru']
 
 XKB_MAJOR_VER = 1
 XKB_MINOR_VER = 0
@@ -173,11 +198,12 @@ class xcb_generic_event_t(ctypes.Structure):
 
 class KeyboardIcon(object):
     def __init__(self):
+        signal.signal(signal.SIGINT, self._exit)
         self._init_menu()
         self._init_xcb_xkb()
         self._init_xkb_groups()
         self._draw_langs()
-        self.icon = Gtk.StatusIcon()
+        self.icon = gtk.StatusIcon()
         self.icon.connect('activate', self.activate_icon)
         self.icon.connect('popup-menu', self.popup_menu_icon)
         self._init_xkb_handler()
@@ -186,8 +212,7 @@ class KeyboardIcon(object):
 
     def _exit(self, *args):
         self.xcb.xcb_disconnect(self.conn)
-        self.loop.quit()
-        return True
+        gtk.main_quit()
 
     def _init_xcb_xkb(self):
         xcb_location = ctypes.util.find_library('xcb')
@@ -199,11 +224,10 @@ class KeyboardIcon(object):
         self.xcb.xcb_request_check.restype = ctypes.POINTER(
             xcb_generic_error_t
         )
-        ext_name = b'XKEYBOARD'
         cookie = self.xcb.xcb_query_extension(
             self.conn,
             ctypes.c_ushort(9),
-            ctypes.c_char_p(ext_name)
+            ctypes.c_char_p("XKEYBOARD")
         )
         self.xcb.xcb_query_extension_reply.restype = ctypes.POINTER(
             xcb_query_extension_reply_t
@@ -214,7 +238,7 @@ class KeyboardIcon(object):
         present = reply.contents.present
         self.xcb.free(reply)
         if not present:
-            print("No XKEYBOARD extension")
+            print "No XKEYBOARD extension"
             self._exit()
 
         xcb_xkb_location = ctypes.util.find_library('xcb-xkb')
@@ -234,7 +258,7 @@ class KeyboardIcon(object):
         supported = reply.contents.supported
         self.xcb_xkb.free(reply)
         if not supported:
-            print("Extension in not supported by Server")
+            print "Extension in not supported by Server"
             self._exit()
 
     def _init_xkb_handler(self):
@@ -256,17 +280,15 @@ class KeyboardIcon(object):
         err = self.xcb.xcb_request_check(self.conn, cookie)
         if err:
             self.xcb_xkb.free(err)
-            print("Cant initialize event handler")
+            print "Cant initialize event handler"
             self._exit()
         self.xcb.xcb_poll_for_event.restype = ctypes.POINTER(
             xcb_generic_event_t
         )
         self.xcb.xcb_flush(self.conn)
-        self.timeout_id = GObject.timeout_add(
-            POLL_TIMEOUT, self.poll, None
-        )
+        gobject.timeout_add(POLL_TIMEOUT, self.poll)
 
-    def poll(self, *args):
+    def poll(self):
         e = self.xcb.xcb_poll_for_event(self.conn)
         if e:
             self.xcb.free(e)
@@ -274,8 +296,11 @@ class KeyboardIcon(object):
         return True
 
     def _init_xkb_groups(self):
-        names = self._get_group_names()
-        groups = self._parse_group_names(names)
+        if platform.system() == "FreeBSD":
+            groups = DEFAULT_GROUPS
+        else:
+            names = self._get_group_names()
+            groups = self._parse_group_names(names)
         self.xkb_groups = groups
 
     def _get_group_names(self):
@@ -315,7 +340,7 @@ class KeyboardIcon(object):
 
     def _parse_group_names(self, atom_name):
         kb_groups = []
-        kbs = re.sub(r'^pc[+_]', '', atom_name.decode("utf-8"))
+        kbs = re.sub(r'^pc[+_]', '', atom_name)
         kbs = re.findall(r'[a-z0-9():\-]+(?:_[0-9])?', kbs)
         kb_groups.append(kbs[0])
         postfix = r'[_:][0-9]$'
@@ -367,11 +392,11 @@ class KeyboardIcon(object):
                         event_button, event_time)
 
     def _init_menu(self):
-        self.menu = Gtk.Menu()
-        close_item = Gtk.MenuItem(EXIT_LABEL)
+        self.menu = gtk.Menu()
+        close_item = gtk.MenuItem(EXIT_LABEL)
         close_item.connect("activate", self._exit)
         self.menu.append(close_item)
-        self.menu.show_all()
+        close_item.show()
 
     def _draw_langs(self):
         langs = []
@@ -382,40 +407,32 @@ class KeyboardIcon(object):
         self.langs = langs
 
     def _draw_text(self, text):
-        pixbuf = GdkPixbuf.Pixbuf.new(
-            GdkPixbuf.Colorspace.RGB, True, 8, ICON_SIZE, ICON_SIZE
-        )
-        surface = cairo.ImageSurface(
-            cairo.FORMAT_ARGB32,
-            pixbuf.get_width(),
-            pixbuf.get_height()
-        )
-        context = cairo.Context(surface)
-        Gdk.cairo_set_source_pixbuf(context, pixbuf, 0, 0)
-        context.paint()
+        pixbuf = gdk.Pixbuf(gdk.COLORSPACE_RGB,
+                            True, 8, ICON_SIZE, ICON_SIZE)
+        pixbuf.fill(0x00000000)
+        pixmap = pixbuf.render_pixmap_and_mask(
+            alpha_threshold=127
+        )[0]
+        cr = pixmap.cairo_create()
 
-        context.select_font_face(
-            FONT_FACE,
-            cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD
+        cr.select_font_face(FONT_FACE,
+                            cairo.FONT_SLANT_NORMAL,
+                            cairo.FONT_WEIGHT_BOLD)
+        cr.set_source_rgba(0.9, 0.9, 0.9, 1)
+        cr.set_font_size(FONT_SIZE)
+        cr.move_to(0, Y_OFFSET)
+        cr.show_text(text)
+        pixbuf.get_from_drawable(
+            pixmap, pixmap.get_colormap(),
+            0, 0, 0, 0, ICON_SIZE, ICON_SIZE
         )
-        context.set_source_rgba(0.9, 0.9, 0.9, 1)
-        context.set_font_size(FONT_SIZE)
-        context.move_to(0, Y_OFFSET)
-        context.show_text(text)
-
-        #get the resulting pixbuf
-        surface= context.get_target()
-        pixbuf= Gdk.pixbuf_get_from_surface(surface, 0, 0, surface.get_width(), surface.get_height())
-
+        pixbuf = pixbuf.add_alpha(True, 0x00, 0x00, 0x00)
         return pixbuf
-
-    def run(self):
-        self.loop = GLib.MainLoop()
-        self.loop.run()
 
 
 if __name__ == '__main__':
-    keyboard_icon = KeyboardIcon()
-    keyboard_icon.run()
+    pygtk.require("2.0")
+    gdk.threads_init()
+    KeyboardIcon()
+    gtk.main()
 

@@ -30,8 +30,8 @@ class I3Connection(object):
 
     def _check_zoom_enabled(self):
         out = self.check_output(["i3-msg", "zoom"])
-        if "^^^" in out:
-            print "Zoom isn't enabled"
+        if "^^^" in out.decode('UTF-8'):
+            print("Zoom isn't enabled")
             exit()
 
     def _check_and_kill_another_instance(self):
