@@ -66,7 +66,7 @@ index cec571e..b14d418 100644
  
      fullscreen_mode_t fullscreen_mode;
 +
-+    bool zoom_mode;
++    bool zoomed;
 +
      /* layout is the layout of this container: one of split[v|h], stacked or
       * tabbed. Special containers in the tree (above workspaces) have special
@@ -152,7 +152,7 @@ index b610b0c..ca249ff 100644
 +    while (!TAILQ_EMPTY(&bfs_head)) {
 +        entry = TAILQ_FIRST(&bfs_head);
 +        current = entry->con;
-+        if (current != con && current->zoom_mode == true) {
++        if (current != con && current->zoomed == true) {
 +            /* empty the queue */
 +            while (!TAILQ_EMPTY(&bfs_head)) {
 +                entry = TAILQ_FIRST(&bfs_head);
@@ -199,7 +199,7 @@ index b610b0c..ca249ff 100644
 +
 +    DLOG("toggling zoom for %p / %s\n", con, con->name);
 +
-+    if (con->zoom_mode == false)
++    if (con->zoomed == false)
 +        con_enable_zoom(con);
 +    else
 +        con_disable_zoom(con);
@@ -213,12 +213,12 @@ index b610b0c..ca249ff 100644
 +
 +    DLOG("enable zoom for %p / %s\n", con, con->name);
 +
-+    if (con->zoom_mode == true) {
++    if (con->zoomed == true) {
 +        DLOG("zoom already enabled for %p / %s\n", con, con->name);
 +        return;
 +    }
-+    con->zoom_mode = true;
-+    ipc_send_window_event("zoom_mode", con);
++    con->zoomed = true;
++    ipc_send_window_event("zoomed", con);
 +}
 +
 +void con_disable_zoom(Con *con) {
@@ -229,12 +229,12 @@ index b610b0c..ca249ff 100644
 +
 +    DLOG("disabling fullscreen for %p / %s\n", con, con->name);
 +
-+    if (con->zoom_mode == false) {
++    if (con->zoomed == false) {
 +        DLOG("zoom already disabled for %p / %s\n", con, con->name);
 +        return;
 +    }
-+    con->zoom_mode = false;
-+    ipc_send_window_event("zoom_mode", con);
++    con->zoomed = false;
++    ipc_send_window_event("zoomed", con);
 +}
 +
 +/*
@@ -249,8 +249,8 @@ index 8fed75f..5e171b8 100644
      ystr("fullscreen_mode");
      y(integer, con->fullscreen_mode);
  
-+    ystr("zoom_mode");
-+    y(integer, con->zoom_mode);
++    ystr("zoomed");
++    y(integer, con->zoomed);
 +
      ystr("floating");
      switch (con->floating) {
