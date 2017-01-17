@@ -137,7 +137,7 @@ class I3Connection(object):
         for ws in wss:
             name = ws['name']
             ws_branch = self.find_any_in_tree(tree, 'name', name)
-            if self.find_any_in_tree(ws_branch, 'zoom_mode', 1) \
+            if self.find_any_in_tree(ws_branch, 'zoomed', 1) \
                 and not name.endswith(ZOOMED_MARK):
                 self.command(
                     'rename workspace %s to %s%s' % (name, name, ZOOMED_MARK)
@@ -169,10 +169,10 @@ class I3Connection(object):
             data, msg_type = self._ipc_recv(self.sub_socket)
             json_data = json.loads(data)
             change = json_data['change']
-            if not change in ['zoom_mode', 'close']:
+            if not change in ['zoomed', 'close']:
                 continue
             focused = json_data['container']['focused']
-            zoomed = json_data['container']['zoom_mode']
+            zoomed = json_data['container']['zoomed']
 
             if change == 'close' and zoomed:
                 if focused:
@@ -180,7 +180,7 @@ class I3Connection(object):
                 else:
                     self.mark_all_zoomed()
 
-            if focused and change == 'zoom_mode':
+            if focused and change == 'zoomed':
                 if zoomed:
                     self.add_z_mark_to_focused()
                 else:

@@ -93,9 +93,9 @@ i3 wm zoom patch
     git clone https://github.com/mishurov/applets
     cd applets/i3patch
     sudo mkdir -p /usr/local/portage/x11-wm/i3
-    sudo cp ./i3-4.10.4.ebuild /usr/local/portage/x11-wm/i3
+    sudo cp ./i3-4.13-r1.ebuild /usr/local/portage/x11-wm/i3
     sudo cp -r ./files /usr/local/portage/x11-wm/i3
-    sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.10.4.ebuild manifest clean merge
+    sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.13-r1.ebuild manifest clean merge
     echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
 
 **FreeBSD** (custom port)

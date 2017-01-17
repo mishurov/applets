@@ -12,6 +12,7 @@ from gi.repository import GdkPixbuf
 
 
 FEH_ICON_PATH="/home/mishurov/.config/feh/icon.png"
+ZATHURA_ICON_PATH="/home/mishurov/.config/zathura/icon.png"
 CWD = os.path.dirname(os.path.abspath(__file__))
 #FEH_ICON_PATH = CWD + "/../feh/icon.png"
 #ZATHURA_ICON_PATH = CWD + "/../zathura/icon.png"
@@ -41,7 +42,7 @@ def maximus(window, changed_mask, new_state):
 def set_win_icon(window, path):
     pixbuf = GdkPixbuf.Pixbuf.new_from_file(path)
     gdk_window = window_wnck_to_gdk(window)
-    #gdk_window.set_icon_list([pixbuf,])
+    gdk_window.set_icon_list([pixbuf,])
 
 
 def on_window_opened(screen, window):
