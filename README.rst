@@ -18,7 +18,7 @@ Dependencies (Gentoo)
 Tray applets
 ============
 
-.. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/tray.png
+.. image:: http://mishurov.5gbfree.com/github/applets/tray.png
     :alt: tray applets screenshot
     :align: center
 
@@ -29,7 +29,7 @@ Tray applets
 WM Daemon
 =========
 
-.. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/maximus.png
+.. image:: http://mishurov.5gbfree.com/github/applets/maximus.png
     :alt: feh screenshot
     :align: center
 
@@ -45,7 +45,7 @@ Daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manu
 Calendar
 ========
 
-.. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/calendar.png
+.. image:: http://mishurov.5gbfree.com/github/applets/calendar.png
     :alt: calendar screenshot
     :align: center
 
@@ -54,7 +54,7 @@ Simple gtk3 Calendar application. I use it on click on clock in tint2.
 i3 wm zoom patch
 ================
 
-.. image:: https://dl.dropboxusercontent.com/u/20988720/github/applets/i3_patch.png
+.. image:: http://mishurov.5gbfree.com/github/applets/i3_patch.png
     :alt: i3_patch screenshot
     :align: center
 
@@ -63,10 +63,6 @@ Daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can run it in
 
 **Workspace switch patch** There's also another patch file, whitch changes behaviour of "next_on_output" and
 "prev_on_ouput" commands, it swithes to the first workspace on the next output from the last workspace on the current output and vice versa. It's added to the Gentoo ebuild and the shell script.
-
-**Note:** Patch is only for 4.10.4 version, for newer versions it needs to be slightly changed - mostly in refactored i3's "render" function. 4.10.4 now is newest stable version in Gentoo packages, current i3's "next" git branch was buggy when I tested it for personal use, so patches for newer versions should be later. 
-
-**Make** (no uninstall targetV https://faq.i3wm.org/question/5175/uninstall-from-sources/)
 
 i3 wm zoom patch
 ================
