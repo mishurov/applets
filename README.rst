@@ -18,7 +18,7 @@ Dependencies (Gentoo)
 Tray applets
 ============
 
-.. image:: http://mishurov.5gbfree.com/github/applets/tray.png
+.. image:: http://mishurov.000webhostapp.com/github/applets/tray.png
     :alt: tray applets screenshot
     :align: center
 
@@ -29,7 +29,7 @@ Tray applets
 WM Daemon
 =========
 
-.. image:: http://mishurov.5gbfree.com/github/applets/maximus.png
+.. image:: http://mishurov.000webhostapp.com/github/applets/maximus.png
     :alt: feh screenshot
     :align: center
 
@@ -45,7 +45,7 @@ Daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manu
 Calendar
 ========
 
-.. image:: http://mishurov.5gbfree.com/github/applets/calendar.png
+.. image:: http://mishurov.000webhostapp.com/github/applets/calendar.png
     :alt: calendar screenshot
     :align: center
 
@@ -54,7 +54,7 @@ Simple gtk3 Calendar application. I use it on click on clock in tint2.
 i3 wm zoom patch
 ================
 
-.. image:: http://mishurov.5gbfree.com/github/applets/i3_patch.png
+.. image:: http://mishurov.000webhostapp.com/github/applets/i3_patch.png
     :alt: i3_patch screenshot
     :align: center
 
