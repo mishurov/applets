@@ -384,11 +384,13 @@ class KeyboardIcon(object):
         pixbuf = GdkPixbuf.Pixbuf.new(
             GdkPixbuf.Colorspace.RGB, True, 8, ICON_SIZE, ICON_SIZE
         )
+        pixbuf.fill(0xff000000)
         surface = cairo.ImageSurface(
             cairo.FORMAT_ARGB32,
             pixbuf.get_width(),
             pixbuf.get_height()
         )
+        surface.flush()
         context = cairo.Context(surface)
         Gdk.cairo_set_source_pixbuf(context, pixbuf, 0, 0)
         context.paint()
