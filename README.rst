@@ -13,8 +13,6 @@ Dependencies (Gentoo)
 * x11-libs/libwnck
 * app-misc/jq
 
-**Note:** All applications use Python2. For example: Gentoo starts **python3** by default, to run applet, run **python2 /path/to/script.py**.
-
 Tray applets
 ============
 
@@ -22,9 +20,9 @@ Tray applets
     :alt: tray applets screenshot
     :align: center
 
-**Volume applet** uses gtk2 and official python binding to alsa (python-pyalsa) http://www.alsa-project.org/ instead of python-alsaaudio, where you have to recreate every time mixer to get real volume value (not cached one). Reload mixer necessary when sink is changed, for example after bluetooth headphones connect.
+**Volume applet** uses gtk3 and ctypes calls to pulsaudio.
 
-**Keyboard applet** uses gtk2, ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
+**Keyboard applet** uses gtk3, ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
 
 WM Daemon
 =========
@@ -36,7 +34,7 @@ WM Daemon
 1. Acts as **Maximus**. On every "maximize" event undecorates window and turns on decorations when window being restored.
 2. Adds icon (tray and window title) for every new **feh** window.
 
-**Note:** you can use "mouse_right = maximize_restore" in **tint2rc** file to restore maximized windows with mouse.
+**Note:** you can use "mouse_right = maximize_restore" in **tint2rc** file to restore maximized windows with mouse. It uses gtk2 because python GI is still buggy with wnck and assigning icons.
 
 Hot Corners
 ===========
