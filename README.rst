@@ -2,7 +2,7 @@
 GTK Applets
 ===========
 
-Python2 scripts used with openbox and tint2. Also code may be adapted for use as i3 status apps and so on.
+Python scripts for openbox and tint2. The code also may be adapted as i3 status apps and so forth.
 
 Dependencies (Gentoo)
 ---------------------
@@ -22,7 +22,7 @@ Tray applets
 
 **Volume applet** uses gtk3 and ctypes calls to pulsaudio.
 
-**Keyboard applet** uses gtk3, ctypes and xcb http://xcb.freedesktop.org/ with xkb extension http://www.x.org/wiki/XKB/ (enabled by default on most systems). I don't use xpyb, because it too old and some people claims that it has memory leaks. Text rendered with Cairo.
+**Keyboard applet** uses gtk3, ctypes and xcb http://xcb.freedesktop.org/ with the xkb extension http://www.x.org/wiki/XKB/ (enabled by default on the most systems). I don't use xpyb, because it is too old and some people claim that it has memory leaks. The text icons are rendered with Cairo.
 
 WM Daemon
 =========
@@ -31,14 +31,14 @@ WM Daemon
     :alt: feh screenshot
     :align: center
 
-1. Acts as **Maximus**. On every "maximize" event undecorates window and turns on decorations when window being restored.
-2. Adds icon (tray and window title) for every new **feh** window.
+1. Acts as **Maximus**. On every "maximize" event it undecorates window and turns on decorations when window is restored.
+2. Adds an icon (tray and window title) for every new **feh** window.
 
-**Note:** you can use "mouse_right = maximize_restore" in **tint2rc** file to restore maximized windows with mouse. It uses gtk2 because python GI is still buggy with wnck and assigning icons.
+**Note:** you can use "mouse_right = maximize_restore" in a **tint2rc** file to restore maximized windows with mouse. It uses gtk2 because python GI is still buggy with wnck and assigning icons.
 
 Hot Corners
 ===========
-Daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manual/group__XCB__Record__API.html. Executes commands on mouse clicks on edges of screen. I use right click on top to exit fullscreen mode and clicks on right and left edges to switch between workspaces.
+The daemon uses ctypes and xcb with record extension http://xcb.freedesktop.org/manual/group__XCB__Record__API.html. It executes commands on mouse clicks at edges of a screen. I use a right click on the top of a screen to exit the fullscreen mode and clicks on the right and left edges to switch between workspaces.
 
 Calendar
 ========
@@ -47,7 +47,7 @@ Calendar
     :alt: calendar screenshot
     :align: center
 
-Simple gtk3 Calendar application. I use it on click on clock in tint2.
+A simple gtk3 Calendar application. I use it on click on the clock in the tint2 panel.
 
 i3 wm zoom patch
 ================
@@ -56,10 +56,10 @@ i3 wm zoom patch
     :alt: i3_patch screenshot
     :align: center
 
-Patch to enable tmux-like "zoom" mode - maximize container and don't hide i3bar. And shell script (**smart_fullscreen.sh**) which zooms/fullscreens (in or out depending on state) whole stacked and tabbed layouts instead of particular focused container.
-Daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can run it in i3 config 'exec_always --no-startup-id python2 ~/.config/i3/scripts/zoom_bar_d.py', 'exec_always' instead 'exec' because on reloading i3 ipc-socket may be changed.
+A patch to enable tmux-like "zoom" mode: to maximize a container and to don't hide a i3bar. And the shell script (**smart_fullscreen.sh**) which zooms/fullscreens - in or out, depending on state - whole stacked and tabbed layouts instead of a particular focused container.
+The daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can start it in i3 config 'exec_always --no-startup-id python ~/.config/i3/scripts/zoom_bar_d.py', 'exec_always' instead 'exec' because after reloading i3, ipc-socket may be changed.
 
-**Workspace switch patch** There's also another patch file, whitch changes behaviour of "next_on_output" and
+**Workspace switch patch** There's also another patch file, which changes the behaviour of "next_on_output" and
 "prev_on_ouput" commands, it swithes to the first workspace on the next output from the last workspace on the current output and vice versa. It's added to the Gentoo ebuild and the shell script.
 
 i3 wm zoom patch
@@ -106,4 +106,4 @@ i3 wm zoom patch
 
 Drafts
 ======
-Directory **drafts** contains various attempts to make applets with gtk3 python binding, using subprocess to run background daemons, handle UNIX signals in gtk3 and so on.
+The directory **drafts** contains the various attempts to make the applets with the diffrerent python and gtk versions, using subprocess to run background daemons, alsa instead of pulseaudio, handle UNIX signals in gtk3 and so forth.
