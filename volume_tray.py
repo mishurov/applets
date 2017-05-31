@@ -18,7 +18,7 @@ SCROLL_BY = 1
 MIXER_LABEL = "Pulseaudio..."
 EXIT_LABEL = "Exit"
 MIXER_CMD = "pavucontrol"
-POLL_TIMEOUT = 100
+POLL_TIMEOUT = 1000
 ICON_SIZE = 16
 
 # GUI
@@ -102,9 +102,10 @@ class SoundIcon(object):
         self.mixer = SimplifiedPulseMixer()
         self.create_icon()
         self.create_menu()
-        self.timeout_id = GObject.timeout_add(
-            POLL_TIMEOUT, self.poll_data, None
-        )
+        if POLL_TIMEOUT:
+            self.timeout_id = GObject.timeout_add(
+                POLL_TIMEOUT, self.poll_data, None
+            )
         self.run()
 
     def create_icon(self):
@@ -165,12 +166,12 @@ class SoundIcon(object):
         self.menu.show_all()
 
     def poll_data(self, user_data):
-        self.mixer.refresh()
+        self.mixer.sinks_refresh()
         self.update_icon()
         return True
 
     def activate(self, widget):
-        self.mixer.refresh()
+        self.mixer.sinks_refresh()
         volume = self.mixer.get_volume()
         self.slider_item.set_value(volume)
         mute = self.mixer.get_mute()
@@ -180,7 +181,7 @@ class SoundIcon(object):
         return True
 
     def popup_menu(self, widget, button, time):
-        self.mixer.refresh()
+        self.mixer.sinks_refresh()
         self.mixer.toggle_mute()
         self.update_icon()
         return True
@@ -211,15 +212,22 @@ class SimplifiedPulseMixer(object):
         self.pulse = Pulse('pulsemixer', None)
         self.refresh()
 
-    def refresh(self):
-        sinks = self.pulse.sink_list()
-        sink_inputs = self.pulse.sink_input_list()
-        sources = self.pulse.source_list()
-        source_outputs = self.pulse.source_output_list()
-        server_info = self.pulse.get_server_info()
-        index = [s.index for s in sinks if s.name == server_info.default_sink_name][0]
+    def sinks_refresh(self):
+        self.sinks = self.pulse.sink_list()
         streams = {}
-        for i in source_outputs + sources + sink_inputs + sinks:
+        for i in self.sinks:
+            streams[i.index] = i
+        self.streams = streams
+
+    def refresh(self):
+        self.sinks = self.pulse.sink_list()
+        self.sink_inputs = self.pulse.sink_input_list()
+        self.sources = self.pulse.source_list()
+        self.source_outputs = self.pulse.source_output_list()
+        self.server_info = self.pulse.get_server_info()
+        index = [s.index for s in self.sinks if s.name == self.server_info.default_sink_name][0]
+        streams = {}
+        for i in self.source_outputs + self.sources + self.sink_inputs + self.sinks:
             streams[i.index] = i
         check_id = lambda x: x in streams or sys.exit('ERR: No such ID: ' + str(x))
         check_id(index)
