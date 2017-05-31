@@ -103,6 +103,54 @@ i3 wm zoom patch
     make install clean
     # and place "freebsd" directory to your sources location
 
+**Debian Jessie-backports**
+
+.. code-block:: bash
+
+  apt-get install -y \
+  devscripts \ 
+  dh-autoreconf \
+  libxcb-util0-dev \
+  libxcb-keysyms1-dev \
+  libxcb-xinerama0-dev \
+  libxcb-icccm4-dev \
+  libxcb-cursor-dev \
+  libxcb-xrm-dev \
+  libxcb-xkb-dev \
+  libxkbcommon-x11-dev \
+  asciidoc \
+  xmlto \
+  docbook-xml \
+  libev-dev \
+  libyajl-dev \
+  libstartup-notification0-dev \
+  libcairo2-dev
+  
+  git clone https://github.com/mishurov/applets
+  mkdir i3wm
+  cd i3wm
+  
+  wget http://http.debian.net/debian/pool/main/i/i3-wm/i3-wm_4.13.orig.tar.bz2
+  tar xf i3-wm_4.13.orig.tar.bz2
+  rm i3-wm_4.13.orig.tar.bz2
+  cd i3-4.13
+  git apply ../../applets/i3patch/files/add_zoom_i3_4.13.patch
+  cd ..
+  tar -cvjSf i3-wm_4.13.orig.tar.bz2 i3-4.13
+
+  wget http://http.debian.net/debian/pool/main/i/i3-wm/i3-wm_4.13-1~bpo8+1.debian.tar.xz
+  tar xf i3-wm_4.13-1\~bpo8+1.debian.tar.xz
+  mv debian i3-4.13
+  cd i3-4.13
+
+  dpkg-buildpackage -uc -us
+
+  cd ..
+
+  sudo apt-get remove i3
+  sudo dpkg -i i3-wm_4.13-1\~bpo8+1_amd64.deb
+  sudo apt-get -t jessie-backports install i3
+
 
 Drafts
 ======
