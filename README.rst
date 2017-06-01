@@ -56,8 +56,7 @@ i3 wm zoom patch
     :alt: i3_patch screenshot
     :align: center
 
-A patch to enable tmux-like "zoom" mode: to maximize a container and to don't hide a i3bar. And the shell script (**smart_fullscreen.sh**) which zooms/fullscreens - in or out, depending on state - whole stacked and tabbed layouts instead of a particular focused container.
-The daemon **zoom_bar_d.py** marks workspaces with zoomed windows. You can start it in i3 config 'exec_always --no-startup-id python ~/.config/i3/scripts/zoom_bar_d.py', 'exec_always' instead 'exec' because after reloading i3, ipc-socket may be changed.
+A patch to enable a tmux-like "zoom" mode: to maximize a container and to don't hide an i3bar. The daemon **daemon.py** marks the workspaces containing zoomed windows. You can start it in an i3 config 'exec --no-startup-id python /path/to/daemon.py', to reconnect in case an ipc socket was changed 'echo reconnect > /path/to/daemons/fifo'. It uses "i3ipc-python" package with the "zoomed" property added.
 
 **Workspace switch patch** There's also another patch file, which changes the behaviour of "next_on_output" and
 "prev_on_ouput" commands, it swithes to the first workspace on the next output from the last workspace on the current output and vice versa. It's added to the Gentoo ebuild and the shell script.
