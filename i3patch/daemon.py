@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+import fcntl
 import errno
 from signal import signal, SIGABRT, SIGILL, SIGINT, SIGSEGV, SIGTERM
 import random
@@ -25,7 +27,17 @@ WORKSPACES_NAMES = os.path.join(CWD, "..", "workspaces_names")
 DMENU = "dmenu"
 DMENU_ARGS = [DMENU, "-y", "23", "-fn", "Ubuntu-12", "-l", "30", "-w", "580"]
 FIFO = os.path.join(CWD, '..', 'fifo')
+PID = os.path.join(CWD, "i3_daemon.pid")
 ZOOMED_MARK = "*Z"
+
+
+# Allow only one instance of the daemon
+pid = open(PID, 'w')
+try:
+    fcntl.lockf(pid, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except IOError:
+    print("Another instance is running. Exiting...")
+    sys.exit(0)
 
 
 def is_zoom_enabled():
