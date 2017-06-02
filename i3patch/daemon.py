@@ -25,7 +25,25 @@ FAVOURITES = os.path.join(CWD, "..", "favourites")
 EXIT_I3_SCRIPT = os.path.join(CWD, "exit_i3.sh")
 WORKSPACES_NAMES = os.path.join(CWD, "..", "workspaces_names")
 DMENU = "dmenu"
-DMENU_ARGS = [DMENU, "-y", "23", "-fn", "Ubuntu-12", "-l", "30", "-w", "580"]
+DMENU_ARGS = [ DMENU,
+    "-fn", "Ubuntu-12",
+    "-x", "520",
+    "-y", "23",
+    "-l", "30",
+    "-w", "580",
+]
+DMENU_RUN_ARGS = [
+    "-p", "'execute command:'",
+    "-sb", "'#0858b1'",
+]
+DMENU_RENAME_ARGS = [
+    "-p", "new workspace name:",
+    "-sb", "#583f3f",
+]
+DMENU_ACTIONS_ARGS = [
+    "-p", "window actions:",
+    "-sb", "#BF0A37",
+]
 FIFO = os.path.join(CWD, '..', 'fifo')
 PID = os.path.join(CWD, "i3_daemon.pid")
 ZOOMED_MARK = "*Z"
@@ -132,11 +150,7 @@ def was_dmenu_running():
 def execute_command():
     """Runs dmenu with optional commands
     """
-    cmd = DMENU_ARGS + [
-        "-p", "'execute command:'",
-        "-sb", "'#0858b1'",
-        "-x", "520"
-    ]
+    cmd = DMENU_ARGS + DMENU_RUN_ARGS
     if not os.path.isfile(CACHE_RUN_FILE):
         favourites = ""
         with open(FAVOURITES, "r") as buf:
@@ -163,11 +177,7 @@ def execute_command():
 
 
 def async_rename(names, current_num):
-    cmd = DMENU_ARGS + [
-        "-p", "new workspace name:",
-        "-sb", "#583f3f",
-        "-x", "520"
-    ]
+    cmd = DMENU_ARGS + DMENU_RENAME_ARGS
     input_name = b''
     with TemporaryFile("w") as temp:
         temp.write(names)
@@ -387,11 +397,7 @@ AUX_ACTIONS = [
 ]
 
 def async_con(actions):
-    cmd = DMENU_ARGS + [
-        "-p", "window actions:",
-        "-sb", "#BF0A37",
-        "-x", "520"
-    ]
+    cmd = DMENU_ARGS + DMENU_ACTIONS_ARGS
     input_action = None
     with TemporaryFile("w") as temp:
         temp.write(actions)
