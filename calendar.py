@@ -1,7 +1,3 @@
-import gi
-gi.require_version('Gtk', '3.0')
-gi.require_version('Gdk', '3.0')
-
 from gi.repository import Gio
 from gi.repository import Gdk
 from gi.repository import Gtk
@@ -22,7 +18,7 @@ class Calendar(Gtk.Application):
         window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
         window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
         window.set_wmclass("py_gi_gtk_calendar", "PythonGIGTKCalendar")
-        window.set_title("Calendar")
+        window.set_title("GTKCalendar")
         icon_theme = Gtk.IconTheme.get_default()
         if icon_theme.has_icon(ICON_NAME):
             pixbuf = icon_theme.load_icon(ICON_NAME , ICON_SIZE, 0)
