@@ -81,19 +81,13 @@ class PulseMixer(object):
 
     def async_listener(self):
         self.pulse_d = Pulse('volume-daemon')
-        self.pulse_q = Pulse('volume-query')
         self.pulse_d.event_mask_set('sink')
-        self.pulse_d.event_callback_set(self.event_callback)
-        self.pulse_d.event_listen()
 
-    def event_callback(self, e):
-        sinks = self.pulse_q.sink_list()
-        if sinks:
-            sink = sinks[0]
-            volume = self.pulse_q.volume_get_all_chans(sink)
-            volume = min(max(volume, 0), 1) * 100
-            mute = sink.mute
-            GLib.idle_add(self.callback, volume, mute)
+        # Glib.idle_add is to run the callback in the UI thread
+        self.pulse_d.event_callback_set(
+            lambda e: GLib.idle_add(self.callback)
+        )
+        self.pulse_d.event_listen()
 
 
 # GUI
@@ -187,12 +181,11 @@ class SoundIcon(object):
         self.icon.connect('activate', self.activate)
         self.icon.connect('popup-menu', self.popup_menu)
         self.icon.connect('scroll-event', self.on_scroll)
-        self.update_icon(
-            self.mixer.get_volume(),
-            self.mixer.get_mute(),
-        )
+        self.update_icon()
 
-    def update_icon(self, volume, mute):
+    def update_icon(self):
+        volume = self.mixer.get_volume()
+        mute = self.mixer.get_mute()
         if mute:
             icon_name = 'audio-volume-muted-panel'
         elif volume < 25:

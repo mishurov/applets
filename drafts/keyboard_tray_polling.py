@@ -1,7 +1,6 @@
 import re
 import ctypes
 import ctypes.util
-import threading
 
 import cairo
 
@@ -260,24 +259,21 @@ class KeyboardIcon(object):
             print("Cant initialize event handler")
             self._exit()
 
-        self.xcb.xcb_wait_for_event.restype = ctypes.POINTER(
+        # TODO: change to "xcb_wait_for_event" in another thread to remove overhead
+        self.xcb.xcb_poll_for_event.restype = ctypes.POINTER(
             xcb_generic_event_t
         )
         self.xcb.xcb_flush(self.conn)
-
-        # start blocking listening in another thread
-        self.thread = threading.Thread(
-            target=self.async_listener
+        self.timeout_id = GObject.timeout_add(
+            POLL_TIMEOUT, self.poll, None
         )
-        self.thread.daemon = True
-        self.thread.start()
 
-    def async_listener(self):
-        while True:
-            e = self.xcb.xcb_wait_for_event(self.conn)
-            if e:
-                self.xcb.free(e)
-                GLib.idle_add(self.update_icon)
+    def poll(self, *args):
+        e = self.xcb.xcb_poll_for_event(self.conn)
+        if e:
+            self.xcb.free(e)
+            self.update_icon()
+        return True
 
     def _init_xkb_groups(self):
         names = self._get_group_names()
@@ -411,14 +407,13 @@ class KeyboardIcon(object):
         context.move_to(0, Y_OFFSET)
         context.show_text(text)
 
-        # get the resulting pixbuf
-        surface = context.get_target()
+        #get the resulting pixbuf
+        surface= context.get_target()
         pixbuf= Gdk.pixbuf_get_from_surface(surface, 0, 0, surface.get_width(), surface.get_height())
 
         return pixbuf
 
     def run(self):
-        GObject.threads_init()
         self.loop = GLib.MainLoop()
         self.loop.run()
 
