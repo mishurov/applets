@@ -12,6 +12,7 @@ from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+# pulsectl 17.1.3
 from pulsectl import Pulse
 
 

@@ -13,6 +13,8 @@ from tempfile import TemporaryFile
 import re
 import threading
 
+# i3ipc 1.3.0 patched:
+# added "zoomed" to class Con > __init__ > ipc_properties
 import i3ipc
 
 
