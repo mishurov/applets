@@ -21,7 +21,6 @@ SCROLL_BY = 1
 MIXER_LABEL = "Pulseaudio..."
 EXIT_LABEL = "Exit"
 MIXER_CMD = "pavucontrol"
-POLL_TIMEOUT = 1000
 ICON_SIZE = 16
 
 
