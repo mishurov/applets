@@ -31,45 +31,40 @@ class PulseMixer(object):
     def __init__(self):
         self.pulse = Pulse('volume-control')
 
-    def get_volume(self):
-        ret = 0
+    def get_default_sink(self):
         sinks = self.pulse.sink_list()
-        if sinks:
-            sink = sinks[0]
+        return sinks[0] if len(sinks) else False
+
+    def get_volume(self):
+        sink = self.get_default_sink()
+        if sink:
             ret = self.pulse.volume_get_all_chans(sink)
             ret = min(max(ret, 0), 1) * 100
+        else:
+            ret = 0
         return ret
 
     def set_volume(self, value):
-        sinks = self.pulse.sink_list()
-        if sinks:
-            sink = sinks[0]
-            value /= 100.0
-            self.pulse.volume_set_all_chans(sink, value)
+        sink = self.get_default_sink()
+        sink and self.pulse.volume_set_all_chans(sink, value / 100.0)
 
     def change_volume(self, value):
         ret = 0
-        sinks = self.pulse.sink_list()
-        if sinks:
-            sink = sinks[0]
+        sink = self.get_default_sink()
+        if sink:
             volume = self.pulse.volume_get_all_chans(sink)
             volume += value / 100.0
             volume = min(max(volume, 0), 1)
             self.pulse.volume_set_all_chans(sink, volume)
 
     def get_mute(self):
-        ret = True
-        sinks = self.pulse.sink_list()
-        if sinks:
-            sink = sinks[0]
-            ret = sink.mute
+        sink = self.get_default_sink()
+        ret = sink.mute if sink else True
         return ret
 
     def toggle_mute(self):
-        sinks = self.pulse.sink_list()
-        if sinks:
-            sink = sinks[0]
-            self.pulse.mute(sink, not sink.mute)
+        sink = self.get_default_sink()
+        sink and self.pulse.mute(sink, not sink.mute)
 
     def start_listener(self, func):
         self.callback = func
@@ -88,7 +83,6 @@ class PulseMixer(object):
             lambda e: GLib.idle_add(self.callback)
         )
         self.pulse_d.event_listen()
-
 
 # GUI
 
