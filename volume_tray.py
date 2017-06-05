@@ -239,7 +239,7 @@ class SoundIcon(object):
         return True
 
     def on_value_changed(self, widget, slider):
-        value = int(slider.get_value())
+        value = slider.get_value()
         self.mixer.set_volume(value)
         return True
 
