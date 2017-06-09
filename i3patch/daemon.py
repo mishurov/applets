@@ -167,7 +167,7 @@ def execute_command():
             for f in list_dir(p):
                 if is_file(p, f):
                     bins.append(f)
-        data = "\n".join(favourites + bins)
+        data = "\n".join(favourites + list(set(bins) - set(favourites)))
         with open(CACHE_RUN_FILE, "w") as buf:
             buf.write(data)
     # open dmenu
