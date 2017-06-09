@@ -167,7 +167,9 @@ def execute_command():
             for f in list_dir(p):
                 if is_file(p, f):
                     bins.append(f)
-        data = "\n".join(favourites + list(set(bins) - set(favourites)))
+        # remove dublicates in bins from favourites, keep favourites first
+        options = favourites + list(set(bins) - set(favourites))
+        data = "\n".join(options)
         with open(CACHE_RUN_FILE, "w") as buf:
             buf.write(data)
     # open dmenu
