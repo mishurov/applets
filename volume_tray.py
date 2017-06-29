@@ -16,13 +16,24 @@ from gi.repository import Gdk
 from pulsectl import Pulse
 
 
-VOLUME_WIDTH = 200
-VOLUME_HEIGHT = 50
+# relative units
+VOLUME_WIDTH = 2.1
+VOLUME_HEIGHT = 0.52
+ICON_SIZE = 0.17
+
 SCROLL_BY = 1
 MIXER_LABEL = "Pulseaudio..."
 EXIT_LABEL = "Exit"
 MIXER_CMD = "pavucontrol"
-ICON_SIZE = 16
+
+
+# Adjust sizes to absolute units
+
+DPI = Gdk.Screen.get_default().get_resolution()
+VOLUME_WIDTH *= DPI
+VOLUME_HEIGHT *= DPI
+ICON_SIZE *= DPI
+
 
 
 # Mixer
