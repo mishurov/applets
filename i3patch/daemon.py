@@ -27,12 +27,17 @@ FAVOURITES = os.path.join(CWD, "..", "favourites")
 EXIT_I3_SCRIPT = os.path.join(CWD, "exit_i3.sh")
 WORKSPACES_NAMES = os.path.join(CWD, "..", "workspaces_names")
 DMENU = "dmenu"
+
+# Size for 96 dpi
+# DMENU_WIDTH = "580"
+# Size for 116 dpi
+DMENU_WIDTH = "780"
+
 DMENU_ARGS = [ DMENU,
     "-fn", "Ubuntu-12",
-    "-x", "520",
     "-y", "23",
     "-l", "30",
-    "-w", "580",
+    "-w", DMENU_WIDTH,
 ]
 DMENU_RUN_ARGS = [
     "-p", "'execute command:'",
@@ -149,10 +154,14 @@ def was_dmenu_running():
         return True
 
 
-def execute_command():
+def execute_command(x=None):
     """Runs dmenu with optional commands
     """
     cmd = DMENU_ARGS + DMENU_RUN_ARGS
+
+    if x is not None:
+        cmd.extend(["-x", str(int(x) - 200)])
+
     if not os.path.isfile(CACHE_RUN_FILE):
         favourites = ""
         with open(FAVOURITES, "r") as buf:
@@ -180,8 +189,10 @@ def execute_command():
     )
 
 
-def async_rename(names, current_num):
+def async_rename(names, current_num, x):
     cmd = DMENU_ARGS + DMENU_RENAME_ARGS
+    if x is not None:
+        cmd.extend(["-x", str(int(x) - 200)])
     input_name = b''
     with TemporaryFile("w") as temp:
         temp.write(names)
@@ -210,7 +221,7 @@ def async_rename(names, current_num):
     conn.i3.command("rename workspace to %s" % input_name)
 
 
-def rename_workspace():
+def rename_workspace(x=None):
     tree = conn.i3.get_tree()
     focused = tree.find_focused()
     current_num = focused.workspace().num
@@ -222,7 +233,7 @@ def rename_workspace():
         names += str(current_num) + n
 
     thread = threading.Thread(
-        target=async_rename, args=(names, current_num)
+        target=async_rename, args=(names, current_num, x)
     )
     thread.daemon = True
     thread.start()
@@ -274,14 +285,14 @@ def move_to_new_workspace():
         paste()
 
 
-def smart_run():
+def smart_run(x=None):
     scratch = get_scratch()
     leaves = scratch.leaves()
     if len(leaves) > 0:
         paste()
     else:
         was_dmenu_running()
-        execute_command()
+        execute_command(x)
 
 
 def smart_fullscreen():
@@ -400,8 +411,10 @@ AUX_ACTIONS = [
     "exit i3",
 ]
 
-def async_con(actions):
+def async_con(actions, x):
     cmd = DMENU_ARGS + DMENU_ACTIONS_ARGS
+    if x is not None:
+        cmd.extend(["-x", str(int(x) - 200)])
     input_action = None
     with TemporaryFile("w") as temp:
         temp.write(actions)
@@ -431,7 +444,7 @@ def async_con(actions):
     actions_map[input_action]()
 
 
-def con_actions():
+def con_actions(x=None):
     scratch = get_scratch()
     leaves = scratch.leaves()
     actions = []
@@ -444,7 +457,7 @@ def con_actions():
     actions = "\n".join(actions)
 
     thread = threading.Thread(
-        target=async_con, args=(actions,)
+        target=async_con, args=(actions, x)
     )
     thread.daemon = True
     thread.start()
@@ -477,9 +490,12 @@ except OSError as oe:
         raise
 
 
-LMB = 1
-RMB = 3
+LMB = "1"
+RMB = "3"
 
+menu_block_re = re.compile("(menu_block) (\d+) (\d+)")
+move_block_re = re.compile("(move_block) (\d+) (\d+)")
+con_block_re = re.compile("(con_block) (\d+) (\d+)")
 
 while True:
     cmd = ""
@@ -496,18 +512,26 @@ while True:
                 cmd = data.rstrip()
     # process commands to fifo
     print(cmd)
-    if cmd == "menu_block %s" % LMB or cmd == "exec":
-        was_dmenu_running() or execute_command()
-    elif cmd == "menu_block %s" % RMB or cmd == "rename_workspace":
-        was_dmenu_running() or rename_workspace()
-    elif cmd == "move_block %s" % LMB or cmd == "smart_create":
+    menu_block_match = menu_block_re.match(cmd)
+    move_block_match = move_block_re.match(cmd)
+    con_block_match = con_block_re.match(cmd)
+
+    if menu_block_match and menu_block_match.group(2) == LMB or cmd == "exec":
+        x = menu_block_match.group(3) if menu_block_match else None
+        was_dmenu_running() or execute_command(x=x)
+    elif menu_block_match and menu_block_match.group(2) == RMB or cmd == "rename_workspace":
+        x = menu_block_match.group(3) if menu_block_match else None
+        was_dmenu_running() or rename_workspace(x=x)
+    elif move_block_match and move_block_match.group(2) == LMB or cmd == "smart_create":
+        x = move_block_match.group(3) if move_block_match else None
         create_workspace()
-        smart_run()
-    elif cmd == "move_block %s" % RMB or cmd == "move_to_new":
+        smart_run(x=x)
+    elif move_block_match and move_block_match.group(2) == RMB or cmd == "move_to_new":
         move_to_new_workspace()
-    elif cmd == "con_block %s" % LMB:
-        was_dmenu_running() or con_actions()
-    elif cmd == "con_block %s" % RMB or cmd == "smart_fullscreen":
+    elif con_block_match and con_block_match.group(2) == LMB:
+        x = con_block_match.group(3)
+        was_dmenu_running() or con_actions(x=x)
+    elif con_block_match and con_block_match.group(2) == RMB or cmd == "smart_fullscreen":
         smart_fullscreen()
     elif cmd == "create_workspace":
         create_workspace()
