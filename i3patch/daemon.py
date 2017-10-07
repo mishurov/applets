@@ -13,6 +13,10 @@ from tempfile import TemporaryFile
 import re
 import threading
 
+import gi
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk
+
 # i3ipc 1.3.0 patched:
 # added "zoomed" to class Con > __init__ > ipc_properties
 import i3ipc
@@ -28,10 +32,9 @@ EXIT_I3_SCRIPT = os.path.join(CWD, "exit_i3.sh")
 WORKSPACES_NAMES = os.path.join(CWD, "..", "workspaces_names")
 DMENU = "dmenu"
 
-# Size for 96 dpi
-# DMENU_WIDTH = "580"
-# Size for 116 dpi
-DMENU_WIDTH = "780"
+DPI = Gdk.Screen.get_default().get_resolution()
+DMENU_WIDTH = str(int(DPI * 6.05))
+DMENU_OFFSET = str(int(DPI * 2.2))
 
 DMENU_ARGS = [ DMENU,
     "-fn", "Ubuntu-12",
@@ -160,7 +163,7 @@ def execute_command(x=None):
     cmd = DMENU_ARGS + DMENU_RUN_ARGS
 
     if x is not None:
-        cmd.extend(["-x", str(int(x) - 200)])
+        cmd.extend(["-x", str(int(x) - int(DMENU_OFFSET))])
 
     if not os.path.isfile(CACHE_RUN_FILE):
         favourites = ""
@@ -182,9 +185,10 @@ def execute_command(x=None):
         with open(CACHE_RUN_FILE, "w") as buf:
             buf.write(data)
     # open dmenu
+    env = os.environ.copy()
     cmd = "%s < %s | %s" % (" ".join(cmd), CACHE_RUN_FILE, SHELL)
     Popen(
-        cmd, shell=True, stdin=None,
+        cmd, env=env, shell=True, stdin=None,
         stdout=None, stderr=None, close_fds=True
     )
 
@@ -414,7 +418,7 @@ AUX_ACTIONS = [
 def async_con(actions, x):
     cmd = DMENU_ARGS + DMENU_ACTIONS_ARGS
     if x is not None:
-        cmd.extend(["-x", str(int(x) - 200)])
+        cmd.extend(["-x", str(int(x) - int(DMENU_OFFSET))])
     input_action = None
     with TemporaryFile("w") as temp:
         temp.write(actions)
