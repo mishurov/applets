@@ -1,6 +1,6 @@
-===========
-GTK Applets
-===========
+=======
+Applets
+=======
 
 Python scripts for openbox and tint2. The code also may be adapted as i3 status apps and so forth.
 
@@ -150,6 +150,14 @@ i3 wm zoom patch
   sudo dpkg -i i3-wm_4.13-1\~bpo8+1_amd64.deb
   sudo apt-get -t jessie-backports install i3
 
+PyQT
+======
+
+.. image:: http://mishurov.co.uk/images/github/applets/pyqt.png
+    :alt: pyqt screenshot
+    :align: center
+
+Simple boilerplates for PyQT 5
 
 Drafts
 ======
