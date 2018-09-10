@@ -7,7 +7,7 @@ from gi.repository import Gdk
 from gi.repository import Gtk
 
 
-ICON_NAME = 'gtk-help'
+ICON_NAME = 'clipboard'
 ICON_SIZE = 16
 
 

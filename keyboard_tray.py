@@ -15,10 +15,17 @@ from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
 
+FONT_SIZE = 0.125
+ICON_SIZE = 0.17
+X_OFFSET = 0.0115
+Y_OFFSET = 0.12
+
+DPI = Gdk.Screen.get_default().get_resolution()
 FONT_FACE = "Ubuntu"
-FONT_SIZE = 18
-ICON_SIZE = 22
-Y_OFFSET = 15
+FONT_SIZE *= DPI
+ICON_SIZE *= DPI
+X_OFFSET *= DPI
+Y_OFFSET *= DPI
 EXIT_LABEL = "Exit"
 
 XKB_MAJOR_VER = 1
@@ -42,13 +49,13 @@ class xcb_generic_error_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
         ('error_code', ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('resource_id',  ctypes.c_uint),
-        ('minor_code',  ctypes.c_ushort),
+        ('sequence', ctypes.c_ushort),
+        ('resource_id', ctypes.c_uint),
+        ('minor_code', ctypes.c_ushort),
         ('major_code', ctypes.c_ubyte),
         ('pad0', ctypes.c_ubyte),
-        ('pad',  ctypes.c_uint*5),
-        ('full_sequence',  ctypes.c_uint),
+        ('pad', ctypes.c_uint * 5),
+        ('full_sequence', ctypes.c_uint),
     ]
 
 
@@ -56,8 +63,8 @@ class xcb_query_extension_reply_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
         ('pad0', ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('length',  ctypes.c_uint),
+        ('sequence', ctypes.c_ushort),
+        ('length', ctypes.c_uint),
         ('present', ctypes.c_ubyte),
         ('major_opcode', ctypes.c_ubyte),
         ('first_event', ctypes.c_ubyte),
@@ -69,11 +76,11 @@ class xcb_xkb_use_extension_reply_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
         ('supported', ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('length',  ctypes.c_uint),
-        ('serverMajor',  ctypes.c_ushort),
-        ('serverMinor',  ctypes.c_ushort),
-        ('pad0', ctypes.c_ubyte*20),
+        ('sequence', ctypes.c_ushort),
+        ('length', ctypes.c_uint),
+        ('serverMajor', ctypes.c_ushort),
+        ('serverMinor', ctypes.c_ushort),
+        ('pad0', ctypes.c_ubyte * 20),
     ]
 
 
@@ -82,66 +89,66 @@ xcb_atom_t = ctypes.c_uint
 
 class xcb_xkb_key_name_t(ctypes.Structure):
     _fields_ = [
-        ('name',  ctypes.c_char*4),
+        ('name', ctypes.c_char * 4),
     ]
 
 
 class xcb_xkb_key_alias_t(ctypes.Structure):
     _fields_ = [
-        ('real',  ctypes.c_char*4),
-        ('alias',  ctypes.c_char*4),
+        ('real', ctypes.c_char * 4),
+        ('alias', ctypes.c_char * 4),
     ]
 
 
 class xcb_xkb_get_names_value_list_t(ctypes.Structure):
     _fields_ = [
-        ('keycodesName',  xcb_atom_t),
-        ('geometryName',  xcb_atom_t),
-        ('symbolsName',  xcb_atom_t),
-        ('physSymbolsName',  xcb_atom_t),
-        ('typesName',  xcb_atom_t),
-        ('compatName',  xcb_atom_t),
-        ('typeNames',  ctypes.POINTER(xcb_atom_t)),
+        ('keycodesName', xcb_atom_t),
+        ('geometryName', xcb_atom_t),
+        ('symbolsName', xcb_atom_t),
+        ('physSymbolsName', xcb_atom_t),
+        ('typesName', xcb_atom_t),
+        ('compatName', xcb_atom_t),
+        ('typeNames', ctypes.POINTER(xcb_atom_t)),
         ('nLevelsPerType', ctypes.POINTER(ctypes.c_ubyte)),
         ('alignment_pad', ctypes.POINTER(ctypes.c_ubyte)),
-        ('ktLevelNames',  ctypes.POINTER(xcb_atom_t)),
-        ('indicatorNames',  ctypes.POINTER(xcb_atom_t)),
-        ('virtualModNames',  ctypes.POINTER(xcb_atom_t)),
-        ('groups',  ctypes.POINTER(xcb_atom_t)),
-        ('keyNames',  ctypes.POINTER(xcb_xkb_key_name_t)),
-        ('keyAliases',  ctypes.POINTER(xcb_xkb_key_alias_t)),
-        ('radioGroupNames',  ctypes.POINTER(xcb_atom_t)),
+        ('ktLevelNames', ctypes.POINTER(xcb_atom_t)),
+        ('indicatorNames', ctypes.POINTER(xcb_atom_t)),
+        ('virtualModNames', ctypes.POINTER(xcb_atom_t)),
+        ('groups', ctypes.POINTER(xcb_atom_t)),
+        ('keyNames', ctypes.POINTER(xcb_xkb_key_name_t)),
+        ('keyAliases', ctypes.POINTER(xcb_xkb_key_alias_t)),
+        ('radioGroupNames', ctypes.POINTER(xcb_atom_t)),
     ]
 
 
 class xcb_xkb_get_names_reply_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
-        ('deviceID',  ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('length',  ctypes.c_uint),
+        ('deviceID', ctypes.c_ubyte),
+        ('sequence', ctypes.c_ushort),
+        ('length', ctypes.c_uint),
         ('which', ctypes.c_uint),
         ('minKeyCode', xcb_keycode_t),
         ('maxKeyCode', xcb_keycode_t),
-        ('nTypes',  ctypes.c_ubyte),
-        ('groupNames',  ctypes.c_ubyte),
-        ('virtualMods',  ctypes.c_ushort),
+        ('nTypes', ctypes.c_ubyte),
+        ('groupNames', ctypes.c_ubyte),
+        ('virtualMods', ctypes.c_ushort),
         ('firstKey', xcb_keycode_t),
         ('nKeys', ctypes.c_ubyte),
-        ('indicators',  ctypes.c_uint),
-        ('nRadioGroups',  ctypes.c_ubyte),
-        ('nKeyAliases',  ctypes.c_ubyte),
-        ('nKTLevels',  ctypes.c_ushort),
-        ('pad0', ctypes.c_ubyte*4),
+        ('indicators', ctypes.c_uint),
+        ('nRadioGroups', ctypes.c_ubyte),
+        ('nKeyAliases', ctypes.c_ubyte),
+        ('nKTLevels', ctypes.c_ushort),
+        ('pad0', ctypes.c_ubyte * 4),
     ]
 
 
 class xcb_xkb_get_state_reply_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
-        ('deviceID',  ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('length',  ctypes.c_uint),
+        ('deviceID', ctypes.c_ubyte),
+        ('sequence', ctypes.c_ushort),
+        ('length', ctypes.c_uint),
         ('mods', ctypes.c_ubyte),
         ('baseMods', ctypes.c_ubyte),
         ('latchedMods', ctypes.c_ubyte),
@@ -157,7 +164,7 @@ class xcb_xkb_get_state_reply_t(ctypes.Structure):
         ('compatLookupMods', ctypes.c_ubyte),
         ('pad0', ctypes.c_ubyte),
         ('ptrBtnState', ctypes.c_ushort),
-        ('pad1', ctypes.c_ubyte*6),
+        ('pad1', ctypes.c_ubyte * 6),
     ]
 
 
@@ -165,9 +172,9 @@ class xcb_generic_event_t(ctypes.Structure):
     _fields_ = [
         ('response_type', ctypes.c_ubyte),
         ('pad0', ctypes.c_ubyte),
-        ('sequence',  ctypes.c_ushort),
-        ('pad',  ctypes.c_uint*7),
-        ('full_sequence',  ctypes.c_uint),
+        ('sequence', ctypes.c_ushort),
+        ('pad', ctypes.c_uint * 7),
+        ('full_sequence', ctypes.c_uint),
     ]
 
 
@@ -176,7 +183,8 @@ class KeyboardIcon(object):
         self._init_menu()
         self._init_xcb_xkb()
         self._init_xkb_groups()
-        self._draw_langs()
+        #self._draw_langs()
+        self._draw_langs_pango()
         self.icon = Gtk.StatusIcon()
         self.icon.connect('activate', self.activate_icon)
         self.icon.connect('popup-menu', self.popup_menu_icon)
@@ -220,8 +228,7 @@ class KeyboardIcon(object):
         xcb_xkb_location = ctypes.util.find_library('xcb-xkb')
         self.xcb_xkb = ctypes.CDLL(xcb_xkb_location)
 
-        self.xcb_xkb.xcb_xkb_use_extension_reply.restype \
-        = ctypes.POINTER(
+        self.xcb_xkb.xcb_xkb_use_extension_reply.restype = ctypes.POINTER(
             xcb_xkb_use_extension_reply_t
         )
 
@@ -238,21 +245,21 @@ class KeyboardIcon(object):
             self._exit()
 
     def _init_xkb_handler(self):
-        XCB_XKB_EVENT_TYPE_EXTENSION_DEVICE_NOTIFY = 2048 
+        XCB_XKB_EVENT_TYPE_EXTENSION_DEVICE_NOTIFY = 2048
         affectWhich = ctypes.c_ushort(
             XCB_XKB_EVENT_TYPE_EXTENSION_DEVICE_NOTIFY
         )
         affectMap = ctypes.c_ushort(0)
         cookie = self.xcb_xkb.xcb_xkb_select_events_checked(
-                              self.conn,
-                              use_core_kbd,
-                              affectWhich,
-                              ctypes.c_ushort(0),
-                              affectWhich,
-                              affectMap,
-                              affectMap,
-                              None
-                            )
+            self.conn,
+            use_core_kbd,
+            affectWhich,
+            ctypes.c_ushort(0),
+            affectWhich,
+            affectMap,
+            affectMap,
+            None
+        )
         err = self.xcb.xcb_request_check(self.conn, cookie)
         if err:
             self.xcb_xkb.free(err)
@@ -279,9 +286,13 @@ class KeyboardIcon(object):
                 GLib.idle_add(self.update_icon)
 
     def _init_xkb_groups(self):
-        names = self._get_group_names()
-        groups = self._parse_group_names(names)
+        #names = self._get_group_names()
+        #groups = self._parse_group_names(names)
+        groups = self._get_group_names_simple()
         self.xkb_groups = groups
+
+    def _get_group_names_simple(self):
+        return ["en", "ru"]
 
     def _get_group_names(self):
         XCB_XKB_NAME_DETAIL_SYMBOLS = 4
@@ -341,7 +352,7 @@ class KeyboardIcon(object):
         reply = self.xcb_xkb.xcb_xkb_get_state_reply(
             self.conn, cookie, None
         )
-        group = reply.contents.group 
+        group = reply.contents.group
         self.xcb_xkb.free(reply)
         return group
 
@@ -353,7 +364,8 @@ class KeyboardIcon(object):
         group = self.get_xkb_group()
         groups_len = len(self.xkb_groups)
         next_group = group + 1
-        if next_group >= groups_len: next_group = 0
+        if next_group >= groups_len:
+            next_group = 0
         self.set_xkb_group(next_group)
 
     def set_xkb_group(self, group):
@@ -378,6 +390,15 @@ class KeyboardIcon(object):
         self.menu.show_all()
 
     def _draw_langs(self):
+        icon_theme = Gtk.IconTheme.get_default()
+        langs = []
+        for gt in self.xkb_groups:
+           icon_name = "indicator-keyboard-" + gt[:2].capitalize()
+           icon = icon_theme.load_icon(icon_name, ICON_SIZE, 0)
+           langs.append(icon)
+        self.langs = langs
+
+    def _draw_langs_pango(self):
         langs = []
         for gt in self.xkb_groups:
             langs.append(
@@ -407,12 +428,13 @@ class KeyboardIcon(object):
         )
         context.set_source_rgba(0.9, 0.9, 0.9, 1)
         context.set_font_size(FONT_SIZE)
-        context.move_to(0, Y_OFFSET)
+        context.move_to(X_OFFSET, Y_OFFSET)
         context.show_text(text)
 
         # get the resulting pixbuf
         surface = context.get_target()
-        pixbuf= Gdk.pixbuf_get_from_surface(surface, 0, 0, surface.get_width(), surface.get_height())
+        pixbuf = Gdk.pixbuf_get_from_surface(
+            surface, 0, 0, surface.get_width(), surface.get_height())
 
         return pixbuf
 
@@ -425,4 +447,3 @@ class KeyboardIcon(object):
 if __name__ == '__main__':
     keyboard_icon = KeyboardIcon()
     keyboard_icon.run()
-
