@@ -72,10 +72,11 @@ i3 wm zoom patch
     cd applets/i3patch
     git clone https://github.com/i3/i3
     cd i3
-    git checkout 4.10.4
-    git apply ../files/add_zoom_i3_4.10.4.patch
-    git apply ../files/workspace_switch_i3_4.10.4.patch
-    make
+    git checkout 4.16.1
+    git apply ../files/add_zoom_i3_4.16.1.patch
+    aclocal && autoheader && automake --add-missing && autoconf
+    ./configure
+    cd ./x86_64-pc-linux-gnu && make -j4
     sudo make install
 
 
@@ -106,7 +107,7 @@ i3 wm zoom patch
 
 .. code-block:: bash
 
-  apt-get install -y \
+  apt install -y \
   devscripts \ 
   dh-autoreconf \
   libxcb-util0-dev \
