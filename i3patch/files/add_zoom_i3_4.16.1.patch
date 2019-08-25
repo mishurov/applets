@@ -293,10 +293,18 @@ index b3c1f5e0..0e7b73b1 100644
   * Implementation of 'sticky enable|disable|toggle'.
   *
 diff --git a/src/con.c b/src/con.c
-index 21d2f097..ba07603e 100644
+index 21d2f097..1bfdbccd 100644
 --- a/src/con.c
 +++ b/src/con.c
-@@ -509,6 +509,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
+@@ -213,6 +213,7 @@ void con_detach(Con *con) {
+         TAILQ_REMOVE(&(con->parent->nodes_head), con, nodes);
+         TAILQ_REMOVE(&(con->parent->focus_head), con, focused);
+     }
++    con_disable_zoom(con);
+ }
+ 
+ /*
+@@ -509,6 +510,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
      return NULL;
  }
  
@@ -347,7 +355,7 @@ index 21d2f097..ba07603e 100644
  /*
   * Returns the fullscreen node that covers the given workspace if it exists.
   * This is either a CF_GLOBAL fullscreen container anywhere or a CF_OUTPUT
-@@ -1113,6 +1157,60 @@ void con_disable_fullscreen(Con *con) {
+@@ -1113,6 +1158,60 @@ void con_disable_fullscreen(Con *con) {
      con_set_fullscreen_mode(con, CF_NONE);
  }
  
