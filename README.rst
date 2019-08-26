@@ -64,10 +64,11 @@ A patch to enable a tmux-like "zoom" mode: to maximize a container and to don't 
 i3 wm zoom patch
 ================
 
-
+**From source** (4.16.1)
 
 .. code-block:: bash
 
+    # needs dev dependencies specific for a distribution
     git clone https://github.com/mishurov/applets
     cd applets/i3patch
     git clone https://github.com/i3/i3
@@ -80,7 +81,7 @@ i3 wm zoom patch
     sudo make install
 
 
-**Gentoo** (local ebuild)
+**Gentoo** (local ebuild, 4.13)
 
 .. code-block:: bash
 
@@ -92,7 +93,7 @@ i3 wm zoom patch
     sudo ebuild /usr/local/portage/x11-wm/i3/i3-4.13-r1.ebuild manifest clean merge
     echo "x11-wm/i3::gentoo" | sudo tee --append /etc/portage/package.mask
 
-**FreeBSD** (custom port)
+**FreeBSD** (custom port, 4.10.4)
 
 .. code-block:: bash
 
@@ -103,7 +104,7 @@ i3 wm zoom patch
     make install clean
     # and place "freebsd" directory to your sources location
 
-**Debian Jessie-backports**
+**Debian Jessie-backports** (4.13)
 
 .. code-block:: bash
 
@@ -125,11 +126,11 @@ i3 wm zoom patch
   libyajl-dev \
   libstartup-notification0-dev \
   libcairo2-dev
-  
+
   git clone https://github.com/mishurov/applets
   mkdir i3wm
   cd i3wm
-  
+
   wget http://http.debian.net/debian/pool/main/i/i3-wm/i3-wm_4.13.orig.tar.bz2
   tar xf i3-wm_4.13.orig.tar.bz2
   rm i3-wm_4.13.orig.tar.bz2
