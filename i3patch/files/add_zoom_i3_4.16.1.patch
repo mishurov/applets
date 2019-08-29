@@ -293,7 +293,7 @@ index b3c1f5e0..0e7b73b1 100644
   * Implementation of 'sticky enable|disable|toggle'.
   *
 diff --git a/src/con.c b/src/con.c
-index 21d2f097..2bc75753 100644
+index 21d2f097..2d1f4ba5 100644
 --- a/src/con.c
 +++ b/src/con.c
 @@ -213,6 +213,7 @@ void con_detach(Con *con) {
@@ -355,7 +355,7 @@ index 21d2f097..2bc75753 100644
  /*
   * Returns the fullscreen node that covers the given workspace if it exists.
   * This is either a CF_GLOBAL fullscreen container anywhere or a CF_OUTPUT
-@@ -1113,6 +1158,68 @@ void con_disable_fullscreen(Con *con) {
+@@ -1113,6 +1158,69 @@ void con_disable_fullscreen(Con *con) {
      con_set_fullscreen_mode(con, CF_NONE);
  }
  
@@ -376,8 +376,8 @@ index 21d2f097..2bc75753 100644
 +}
 +
 +void con_enable_zoom(Con *con) {
-+    if (con->type == CT_WORKSPACE) {
-+        DLOG("You cannot make a workspace zoom.\n");
++    if (con->type == CT_WORKSPACE || con_is_floating(con)) {
++        DLOG("You cannot make a workspace or floating container zoom.\n");
 +        return;
 +    }
 +
@@ -388,8 +388,6 @@ index 21d2f097..2bc75753 100644
 +        return;
 +    }
 +
-+    con->zoomed = true;
-+    ipc_send_window_event("zoomed", con);
 +    Con *ws = con_get_workspace(con);
 +
 +    /* Disable any zoom container that would conflict the new one. */
@@ -400,6 +398,9 @@ index 21d2f097..2bc75753 100644
 +        ws->zoomed = true;
 +        ipc_send_workspace_event("zoomed", ws, NULL);
 +    }
++
++    con->zoomed = true;
++    ipc_send_window_event("zoomed", con);
 +}
 +
 +void con_disable_zoom(Con *con) {
