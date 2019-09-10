@@ -307,9 +307,13 @@ class SoundIcon(object):
                 lambda s, m: self.mixer.set_profile(m),
                 attr
             )
+        sep = Gtk.SeparatorMenuItem()
+        self.menu.append(sep)
         self.menu.append(self.analog)
         self.menu.append(self.hsp)
         self.menu.append(self.a2dp)
+        sep = Gtk.SeparatorMenuItem()
+        self.menu.append(sep)
 
     def create_menu(self):
         self.menu = Gtk.Menu()
