@@ -57,6 +57,7 @@ class PulseMixer(object):
         "hsp": None,
     }
     current_profile = None
+    active_sink = None
 
     def __init__(self):
         self.pulse = Pulse('volume-control')
@@ -70,17 +71,18 @@ class PulseMixer(object):
             self.profiles[k] = None
 
         self.cards = self.pulse.card_list()
-        default_sink = self.get_default_sink()
+        self.get_active_sink()
         for card in self.cards:
             for profile in card.profile_list:
                 if (card.profile_active.name == profile.name
-                    and card.name[:4] == default_sink.name[:4]):
+                    and card.name[:4] == self.active_sink.name[:4]):
                     self.current_profile = profile
                 key = PROFILE_MAP.get(profile.name, None)
                 if key:
                     self.profiles[key] = profile
 
     def set_profile(self, key):
+        # traverse through cards to determine which ones to turn on/off
         next_profile = self.profiles[key]
         next_card = None
         for card in self.cards:
@@ -103,38 +105,42 @@ class PulseMixer(object):
         if off_card and off_profile:
             self.pulse.card_profile_set(off_card, off_profile)
 
-    def get_default_sink(self):
-        info = self.pulse.server_info()
-        return self.pulse.get_sink_by_name(info.default_sink_name)
+    def get_active_sink(self):
+        sink = None
+        sink_inputs = self.pulse.sink_input_list()
+        # check if a sink input is connected to a sink, if no, use default
+        if len(sink_inputs):
+            sink_id = sink_inputs[0].sink
+            sinks = self.pulse.sink_list()
+            sink = next((s for s in sinks if s.index == sink_id), None)
+        if sink is None:
+            info = self.pulse.server_info()
+            sink = self.pulse.get_sink_by_name(info.default_sink_name)
+        self.active_sink = sink
+        return self.active_sink
 
-    def get_volume(self):
-        sink = self.get_default_sink()
-        if sink:
-            ret = self.pulse.volume_get_all_chans(sink)
-            ret = min(max(ret, 0), 1) * 100
-        else:
-            ret = 0
-        return ret
+    def get_sink_volume_and_mute(self):
+        mute = True
+        volume = 0
+        if self.active_sink:
+            volume = self.pulse.volume_get_all_chans(self.active_sink)
+            volume = min(max(volume, 0), 1) * 100
+            mute = self.active_sink.mute
+        return volume, mute
 
     def set_volume(self, value):
-        sink = self.get_default_sink()
-        sink and self.pulse.volume_set_all_chans(sink, value / 100.0)
+        if self.active_sink:
+            self.pulse.volume_set_all_chans(self.active_sink, value / 100.0)
 
     def change_volume(self, value):
-        sink = self.get_default_sink()
-        if sink:
-            volume = self.pulse.volume_get_all_chans(sink)
+        if self.active_sink:
+            volume = self.pulse.volume_get_all_chans(self.active_sink)
             volume += value / 100.0
             volume = min(max(volume, 0), 1)
-            self.pulse.volume_set_all_chans(sink, volume)
-
-    def get_mute(self):
-        sink = self.get_default_sink()
-        ret = sink.mute if sink else True
-        return ret
+            self.pulse.volume_set_all_chans(self.active_sink, volume)
 
     def toggle_mute(self):
-        sink = self.get_default_sink()
+        sink = self.active_sink
         sink and self.pulse.mute(sink, not sink.mute)
 
     def start_listener(self, func):
@@ -234,9 +240,9 @@ class SoundIcon(object):
     def __init__(self):
         self.mixer = PulseMixer()
         self.create_icon()
-        self.update_icon()
         self.mixer.start_listener(self.update_icon)
         self.create_menu()
+        self.update_icon()
         self.run()
 
     def create_icon(self):
@@ -259,8 +265,9 @@ class SoundIcon(object):
                 item.set_sensitive(ps[a] != self.mixer.current_profile)
 
     def update_icon(self):
-        volume = self.mixer.get_volume()
-        mute = self.mixer.get_mute()
+        if not self.menu.get_visible():
+            self.mixer.get_active_sink()
+        volume, mute = self.mixer.get_sink_volume_and_mute()
         if mute:
             icon_name = 'audio-volume-muted-panel'
         elif volume < 25:
@@ -329,9 +336,8 @@ class SoundIcon(object):
 
     def activate(self, widget):
         self.update_menu()
-        volume = self.mixer.get_volume()
+        volume, mute = self.mixer.get_sink_volume_and_mute()
         self.slider_item.set_value(volume)
-        mute = self.mixer.get_mute()
         self.slider_item.set_sensitive(not mute)
         current_time = Gtk.get_current_event_time()
         self.menu.popup(None, None, None, None, 0, current_time)
