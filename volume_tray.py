@@ -253,9 +253,10 @@ class SoundIcon(object):
         attrs = ["analog", "hsp", "a2dp"]
         for a in attrs:
             item = getattr(self, a)
-            item.set_sensitive(
-                ps[a] is not None and ps[a] != self.mixer.current_profile
-            )
+            visible = ps[a] is not None
+            item.set_visible(visible)
+            if visible:
+                item.set_sensitive(ps[a] != self.mixer.current_profile)
 
     def update_icon(self):
         volume = self.mixer.get_volume()
