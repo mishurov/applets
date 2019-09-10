@@ -120,6 +120,7 @@ del _globals, _pa_ev_type, _pa_ev_fac, _pa_ev_mask
 
 PA_UPDATE_MAP = c_enum_map(set=0, merge=1, replace=2)
 PA_PORT_AVAILABLE_MAP = c_enum_map(unknown=0, no=1, yes=2)
+PA_DIRECTION_MAP = c_enum_map(unknown=0, output=1, input=2)
 
 # These are defined separately as
 #  pa_sink_state / pa_source_state, but seem to match.
@@ -263,6 +264,7 @@ class PA_CLIENT_INFO(Structure):
 		('name', c_char_p),
 		('owner_module', c_uint32),
 		('driver', c_char_p),
+		('proplist', POINTER(PA_PROPLIST)),
 	]
 
 class PA_SERVER_INFO(Structure):
@@ -285,6 +287,22 @@ class PA_CARD_PROFILE_INFO(Structure):
 		('n_sinks', c_uint32),
 		('n_sources', c_uint32),
 		('priority', c_uint32),
+		('available', c_int),
+	]
+
+# Extends PA_PORT_INFO with a few card-specific things
+class PA_CARD_PORT_INFO(Structure):
+	_fields_ = [
+		('name', c_char_p),
+		('description', c_char_p),
+		('priority', c_uint32),
+		('available', c_int),
+		('direction', c_int),
+		('n_profiles', c_uint32),
+		('profiles', c_void_p), # use profiles2
+		('proplist', POINTER(PA_PROPLIST)),
+		('latency_offset', c_int64),
+		('profiles2', POINTER(POINTER(PA_CARD_PROFILE_INFO))),
 	]
 
 class PA_CARD_INFO(Structure):
@@ -294,9 +312,13 @@ class PA_CARD_INFO(Structure):
 		('owner_module', c_uint32),
 		('driver', c_char_p),
 		('n_profiles', c_uint32),
-		('profiles', POINTER(PA_CARD_PROFILE_INFO)),
-		('active_profile', POINTER(PA_CARD_PROFILE_INFO)),
+		('profiles', c_void_p), # use profiles2 / active_profile2
+		('active_profile', c_void_p),
 		('proplist', POINTER(PA_PROPLIST)),
+		('n_ports', c_uint32),
+		('ports', POINTER(POINTER(PA_CARD_PORT_INFO))),
+		('profiles2', POINTER(POINTER(PA_CARD_PROFILE_INFO))),
+		('active_profile2', POINTER(PA_CARD_PROFILE_INFO)),
 	]
 
 class PA_MODULE_INFO(Structure):
@@ -339,7 +361,7 @@ PA_SIGNAL_CB_T = CFUNCTYPE(c_void_p,
 	c_int,
 	c_void_p)
 
-PA_STATE_CB_T = CFUNCTYPE(c_int,
+PA_STATE_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	c_void_p)
 
@@ -354,25 +376,25 @@ PA_SERVER_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_SERVER_INFO),
 	c_void_p)
 
-PA_SINK_INPUT_INFO_CB_T = CFUNCTYPE(c_int,
+PA_SINK_INPUT_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_SINK_INPUT_INFO),
 	c_int,
 	c_void_p)
 
-PA_SINK_INFO_CB_T = CFUNCTYPE(c_int,
+PA_SINK_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_SINK_INFO),
 	c_int,
 	c_void_p)
 
-PA_SOURCE_OUTPUT_INFO_CB_T = CFUNCTYPE(c_int,
+PA_SOURCE_OUTPUT_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_SOURCE_OUTPUT_INFO),
 	c_int,
 	c_void_p)
 
-PA_SOURCE_INFO_CB_T = CFUNCTYPE(c_int,
+PA_SOURCE_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_SOURCE_INFO),
 	c_int,
@@ -403,13 +425,13 @@ PA_EXT_STREAM_RESTORE_READ_CB_T = CFUNCTYPE(c_void_p,
 	c_int,
 	c_void_p)
 
-PA_CARD_INFO_CB_T = CFUNCTYPE(None,
+PA_CARD_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_CARD_INFO),
 	c_int,
 	c_void_p)
 
-PA_MODULE_INFO_CB_T = CFUNCTYPE(None,
+PA_MODULE_INFO_CB_T = CFUNCTYPE(c_void_p,
 	POINTER(PA_CONTEXT),
 	POINTER(PA_MODULE_INFO),
 	c_int,
@@ -452,6 +474,7 @@ class LibPulse(object):
 		pa_context_connect=([POINTER(PA_CONTEXT), c_str_p, c_int, POINTER(c_int)], 'int_check_ge0'),
 		pa_context_get_state=([POINTER(PA_CONTEXT)], c_int),
 		pa_context_disconnect=[POINTER(PA_CONTEXT)],
+		pa_context_unref=[POINTER(PA_CONTEXT)],
 		pa_context_drain=( 'pa_op',
 			[POINTER(PA_CONTEXT), PA_CONTEXT_DRAIN_CB_T, c_void_p] ),
 		pa_context_set_default_sink=( 'pa_op',
@@ -464,6 +487,8 @@ class LibPulse(object):
 			[POINTER(PA_CONTEXT), c_uint32, PA_SINK_INPUT_INFO_CB_T, c_void_p] ),
 		pa_context_get_sink_info_list=( 'pa_op',
 			[POINTER(PA_CONTEXT), PA_SINK_INFO_CB_T, c_void_p] ),
+		pa_context_get_sink_info_by_name=( 'pa_op',
+			[POINTER(PA_CONTEXT), c_str_p, PA_SINK_INFO_CB_T, c_void_p] ),
 		pa_context_get_sink_info_by_index=( 'pa_op',
 			[POINTER(PA_CONTEXT), c_uint32, PA_SINK_INFO_CB_T, c_void_p] ),
 		pa_context_set_sink_mute_by_index=( 'pa_op',
@@ -494,6 +519,8 @@ class LibPulse(object):
 			[POINTER(PA_CONTEXT), c_uint32, PA_CONTEXT_SUCCESS_CB_T, c_void_p] ),
 		pa_context_get_source_info_list=( 'pa_op',
 			[POINTER(PA_CONTEXT), PA_SOURCE_INFO_CB_T, c_void_p] ),
+		pa_context_get_source_info_by_name=( 'pa_op',
+			[POINTER(PA_CONTEXT), c_str_p, PA_SOURCE_INFO_CB_T, c_void_p] ),
 		pa_context_get_source_info_by_index=( 'pa_op',
 			[POINTER(PA_CONTEXT), c_uint32, PA_SOURCE_INFO_CB_T, c_void_p] ),
 		pa_context_set_source_volume_by_index=( 'pa_op',

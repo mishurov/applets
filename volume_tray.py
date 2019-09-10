@@ -1,5 +1,3 @@
-import sys
-import inspect
 import subprocess
 import threading
 
@@ -12,7 +10,7 @@ from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-# pulsectl 17.1.3
+# pulsectl 18.12.5
 from pulsectl import Pulse
 
 
@@ -22,29 +20,92 @@ VOLUME_HEIGHT = 0.52
 ICON_SIZE = 0.17
 
 SCROLL_BY = 1
-MIXER_LABEL = "Pulseaudio..."
-EXIT_LABEL = "Exit"
-MIXER_CMD = "pavucontrol"
 
+LABEL_MIXER = "Pulseaudio..."
+LABEL_ANALOG = "Analog Stereo"
+LABEL_HSP = "Headset Head Unit"
+LABEL_A2DP = "High Fidelity Playback"
+LABEL_EXIT = "Exit"
+
+CMD_MIXER = "pavucontrol"
 
 # Adjust sizes to absolute units
-
 DPI = Gdk.Screen.get_default().get_resolution()
 VOLUME_WIDTH *= DPI
 VOLUME_HEIGHT *= DPI
 ICON_SIZE *= DPI
 
+PREFIX_ANALOG = "alsa"
+PREFIX_BT = "bluez"
+PROFILE_ANALOG = "output:analog-stereo+input:analog-stereo"
+PROFILE_HSP = "headset_head_unit"
+PROFILE_A2DP = "a2dp_sink"
+PROFILE_OFF = "off"
+
+PROFILE_MAP = {
+    PROFILE_ANALOG: "analog",
+    PROFILE_A2DP: "a2dp",
+    PROFILE_HSP: "hsp",
+}
 
 
 # Mixer
-
 class PulseMixer(object):
+    profiles = {
+        "analog": None,
+        "a2dp": None,
+        "hsp": None,
+    }
+    current_profile = None
+
     def __init__(self):
         self.pulse = Pulse('volume-control')
 
+    def introspect(self):
+        for k in self.profiles.keys():
+           self.profiles[k] = None
+        self.current_profile = None
+
+        for k in self.profiles.keys():
+            self.profiles[k] = None
+
+        self.cards = self.pulse.card_list()
+        default_sink = self.get_default_sink()
+        for card in self.cards:
+            for profile in card.profile_list:
+                if (card.profile_active.name == profile.name
+                    and card.name[:4] == default_sink.name[:4]):
+                    self.current_profile = profile
+                key = PROFILE_MAP.get(profile.name, None)
+                if key:
+                    self.profiles[key] = profile
+
+    def set_profile(self, key):
+        next_profile = self.profiles[key]
+        next_card = None
+        for card in self.cards:
+            for profile in card.profile_list:
+                if profile == next_profile:
+                    next_card = card
+                    break
+        off_card = None
+        off_profile = None
+        for card in self.cards:
+            if card == next_card:
+                continue
+            for profile in card.profile_list:
+                if profile.name == PROFILE_OFF:
+                    off_card = card
+                    off_profile = profile
+        if not next_card or not next_profile:
+            return
+        self.pulse.card_profile_set(next_card, next_profile)
+        if off_card and off_profile:
+            self.pulse.card_profile_set(off_card, off_profile)
+
     def get_default_sink(self):
-        sinks = self.pulse.sink_list()
-        return sinks[0] if len(sinks) else False
+        info = self.pulse.server_info()
+        return self.pulse.get_sink_by_name(info.default_sink_name)
 
     def get_volume(self):
         sink = self.get_default_sink()
@@ -60,7 +121,6 @@ class PulseMixer(object):
         sink and self.pulse.volume_set_all_chans(sink, value / 100.0)
 
     def change_volume(self, value):
-        ret = 0
         sink = self.get_default_sink()
         if sink:
             volume = self.pulse.volume_get_all_chans(sink)
@@ -95,15 +155,15 @@ class PulseMixer(object):
         )
         self.pulse_d.event_listen()
 
-# GUI
 
+# GUI
 class SliderItem(Gtk.ImageMenuItem):
     def __init__(self, *args, **kwargs):
         Gtk.ImageMenuItem.__init__(self, *args, **kwargs)
         GObject.signal_new(
             'value-changed',
             self,
-            GObject.SIGNAL_RUN_LAST,
+            GObject.SignalFlags.RUN_LAST,
             GObject.TYPE_PYOBJECT,
             (
                 GObject.TYPE_PYOBJECT,
@@ -158,9 +218,8 @@ class SliderItem(Gtk.ImageMenuItem):
         if not self.slider_grabbed:
             event.x = x
             event.y = y
-        if (self.slider_grabbed or
-            x > 0 and x < alloc.width
-            and y > 0 and y < alloc.height):
+        if (self.slider_grabbed
+            or x > 0 and x < alloc.width and y > 0 and y < alloc.height):
             child.event(event)
         return True
 
@@ -174,8 +233,9 @@ class SliderItem(Gtk.ImageMenuItem):
 class SoundIcon(object):
     def __init__(self):
         self.mixer = PulseMixer()
-        self.mixer.start_listener(self.update_icon)
         self.create_icon()
+        self.update_icon()
+        self.mixer.start_listener(self.update_icon)
         self.create_menu()
         self.run()
 
@@ -186,7 +246,16 @@ class SoundIcon(object):
         self.icon.connect('activate', self.activate)
         self.icon.connect('popup-menu', self.popup_menu)
         self.icon.connect('scroll-event', self.on_scroll)
-        self.update_icon()
+
+    def update_menu(self):
+        self.mixer.introspect()
+        ps = self.mixer.profiles
+        attrs = ["analog", "hsp", "a2dp"]
+        for a in attrs:
+            item = getattr(self, a)
+            item.set_sensitive(
+                ps[a] is not None and ps[a] != self.mixer.current_profile
+            )
 
     def update_icon(self):
         volume = self.mixer.get_volume()
@@ -202,28 +271,44 @@ class SoundIcon(object):
         if icon_name != self.icon_name:
             self.icon_name = icon_name
             icon = self.icon_theme.load_icon(icon_name, ICON_SIZE, 0)
-            self.icon.set_from_pixbuf(icon)
+            self.icon.set_property("pixbuf", icon)
 
     def create_mixer(self):
-        item = Gtk.MenuItem(MIXER_LABEL)
+        item = Gtk.MenuItem(label=LABEL_MIXER)
         item.connect('activate', self.activate_mixer)
         return item
 
     def activate_mixer(self, *args):
         subprocess.Popen(
-            [MIXER_CMD], shell=True, stdin=None,
+            [CMD_MIXER], shell=True, stdin=None,
             stdout=None, stderr=None, close_fds=True
         )
         return True
 
     def create_exit(self):
-        item = Gtk.MenuItem(EXIT_LABEL)
+        item = Gtk.MenuItem(label=LABEL_EXIT)
         item.connect('activate', self.activate_exit)
         return item
 
     def activate_exit(self, *args):
         self.loop.quit()
         return True
+
+    def create_profiles(self):
+        self.analog = Gtk.MenuItem(label=LABEL_ANALOG)
+        self.a2dp = Gtk.MenuItem(label=LABEL_A2DP)
+        self.hsp = Gtk.MenuItem(label=LABEL_HSP)
+        attrs = ["analog", "hsp", "a2dp"]
+        for attr in attrs:
+            item = getattr(self, attr)
+            item.connect(
+                'activate',
+                lambda s, m: self.mixer.set_profile(m),
+                attr
+            )
+        self.menu.append(self.analog)
+        self.menu.append(self.hsp)
+        self.menu.append(self.a2dp)
 
     def create_menu(self):
         self.menu = Gtk.Menu()
@@ -233,10 +318,12 @@ class SoundIcon(object):
         exit_item = self.create_exit()
         self.menu.append(self.slider_item)
         self.menu.append(mixer_item)
+        self.create_profiles()
         self.menu.append(exit_item)
         self.menu.show_all()
 
     def activate(self, widget):
+        self.update_menu()
         volume = self.mixer.get_volume()
         self.slider_item.set_value(volume)
         mute = self.mixer.get_mute()
@@ -256,7 +343,6 @@ class SoundIcon(object):
 
     def on_scroll(self, widget, event):
         drct = event.direction
-        delta = event.delta_y
         if drct == Gdk.ScrollDirection.UP:
             self.mixer.change_volume(SCROLL_BY)
         elif drct == Gdk.ScrollDirection.DOWN:
@@ -264,14 +350,10 @@ class SoundIcon(object):
         return True
 
     def run(self):
-        GObject.threads_init()
         self.loop = GLib.MainLoop()
         self.loop.run()
 
 
 # Run application
-
 if __name__ == '__main__':
     SoundIcon()
-
-

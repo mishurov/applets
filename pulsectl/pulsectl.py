@@ -38,7 +38,7 @@ class EnumValue(object):
 	__slots__ = '_t', '_value', '_c_val'
 	def __init__(self, t, value, c_value=None):
 		self._t, self._value, self._c_val = t, value, c_value
-	def __repr__(self): return '<EnumValue {} {}>'.format(self._t, self._value)
+	def __repr__(self): return '<EnumValue {}={}>'.format(self._t, self._value)
 	def __eq__(self, val):
 		if isinstance(val, EnumValue): val = val._value
 		return self._value == val
@@ -81,6 +81,10 @@ class Enum(object):
 	def __repr__(self):
 		return '<Enum {} [{}]>'.format(self._name, ' '.join(sorted(self._values.keys())))
 
+class FakeLock():
+	def __enter__(self): return self
+	def __exit__(self, *err): pass
+
 
 PulseEventTypeEnum = Enum('event-type', c.PA_EVENT_TYPE_MAP)
 PulseEventFacilityEnum = Enum('event-facility', c.PA_EVENT_FACILITY_MAP)
@@ -88,7 +92,8 @@ PulseEventMaskEnum = Enum('event-mask', c.PA_EVENT_MASK_MAP)
 
 PulseStateEnum = Enum('sink/source-state', c.PA_OBJ_STATE_MAP)
 PulseUpdateEnum = Enum('update-type', c.PA_UPDATE_MAP)
-PulsePortAvailableEnum = Enum('available-state', c.PA_PORT_AVAILABLE_MAP)
+PulsePortAvailableEnum = Enum('available', c.PA_PORT_AVAILABLE_MAP)
+PulseDirectionEnum = Enum('direction', c.PA_DIRECTION_MAP)
 
 
 class PulseError(Exception): pass
@@ -100,6 +105,8 @@ class PulseLoopStop(Exception): pass
 class PulseDisconnected(Exception): pass
 
 class PulseObject(object):
+
+	c_struct_wrappers = dict()
 
 	def __init__(self, struct=None, *field_data_list, **field_data_dict):
 		field_data, fields = dict(), getattr(self, 'c_struct_fields', list())
@@ -119,14 +126,15 @@ class PulseObject(object):
 					if not k: break
 					self.proplist[c.force_str(k)] = c.force_str(c.pa.proplist_gets(struct.proplist, k))
 			if hasattr(struct, 'volume'):
-				self.volume = PulseVolumeInfo(struct.volume)
+				self.volume = self._get_wrapper(PulseVolumeInfo)(struct.volume)
 			if hasattr(struct, 'n_ports'):
+				cls_port = self._get_wrapper(PulsePortInfo)
 				self.port_list = list(
-					PulsePortInfo(struct.ports[n].contents)
-					for n in range(struct.n_ports) )
+					cls_port(struct.ports[n].contents) for n in range(struct.n_ports) )
 			if hasattr(struct, 'active_port'):
-				self.port_active = None if not struct.active_port\
-					else PulsePortInfo(struct.active_port.contents)
+				cls_port = self._get_wrapper(PulsePortInfo)
+				self.port_active = (
+					None if not struct.active_port else cls_port(struct.active_port.contents) )
 			if hasattr(struct, 'channel_map'):
 				self.channel_count, self.channel_list = struct.channel_map.channels, list()
 				if self.channel_count > 0:
@@ -138,6 +146,9 @@ class PulseObject(object):
 					struct.state, u'state.{}'.format(struct.state) )
 				self.state_values = sorted(PulseStateEnum._values.values())
 			self._init_from_struct(struct)
+
+	def _get_wrapper(self, cls_base):
+		return self.c_struct_wrappers.get(cls_base, cls_base)
 
 	def _copy_struct_fields(self, struct, fields=None, str_errors='strict'):
 		if not fields: fields = self.c_struct_fields
@@ -164,10 +175,11 @@ class PulseObject(object):
 
 
 class PulsePortInfo(PulseObject):
-	c_struct_fields = 'name description priority'
+	c_struct_fields = 'name description available priority'
 
 	def _init_from_struct(self, struct):
-		self.available_state = PulsePortAvailableEnum._c_val(struct.available)
+		self.available = PulsePortAvailableEnum._c_val(struct.available)
+		self.available_state = self.available # for compatibility with <=17.6.0
 
 	def __eq__(self, o):
 		if not isinstance(o, PulsePortInfo): raise TypeError(o)
@@ -218,16 +230,24 @@ class PulseSourceOutputInfo(PulseObject):
 		return self._as_str(fields='index name mute')
 
 class PulseCardProfileInfo(PulseObject):
-	c_struct_fields = 'name description n_sinks n_sources priority'
+	c_struct_fields = 'name description n_sinks n_sources priority available'
+
+class PulseCardPortInfo(PulsePortInfo):
+	c_struct_fields = 'name description available priority direction latency_offset'
+
+	def _init_from_struct(self, struct):
+		super(PulseCardPortInfo, self)._init_from_struct(struct)
+		self.direction = PulseDirectionEnum._c_val(struct.direction)
 
 class PulseCardInfo(PulseObject):
 	c_struct_fields = 'name index driver owner_module n_profiles'
+	c_struct_wrappers = {PulsePortInfo: PulseCardPortInfo}
 
 	def __init__(self, struct):
 		super(PulseCardInfo, self).__init__(struct)
 		self.profile_list = list(
-			PulseCardProfileInfo(struct.profiles[n]) for n in range(self.n_profiles) )
-		self.profile_active = PulseCardProfileInfo(struct.active_profile.contents)
+			PulseCardProfileInfo(struct.profiles2[n][0]) for n in range(self.n_profiles) )
+		self.profile_active = PulseCardProfileInfo(struct.active_profile2.contents)
 
 	def __str__(self):
 		return self._as_str(
@@ -312,6 +332,8 @@ class PulseEventInfo(PulseObject):
 
 class Pulse(object):
 
+	_ctx = None
+
 	def __init__(self, client_name=None, server=None, connect=True, threading_lock=False):
 		'''Connects to specified pulse server by default.
 			Specifying "connect=False" here prevents that, but be sure to call connect() later.
@@ -342,18 +364,25 @@ class Pulse(object):
 		self._pa_state_cb = c.PA_STATE_CB_T(self._pulse_state_cb)
 		self._pa_subscribe_cb = c.PA_SUBSCRIBE_CB_T(self._pulse_subscribe_cb)
 
-		self._loop, self._loop_lock = c.pa.mainloop_new(), None
+		self._loop, self._loop_lock = c.pa.mainloop_new(), FakeLock()
 		self._loop_running = self._loop_closed = False
 		self._api = c.pa.mainloop_get_api(self._loop)
+		self._ret = c.pa.return_value()
 
-		self._ctx, self._ret = c.pa.context_new(self._api, self.name), c.pa.return_value()
-		c.pa.context_set_state_callback(self._ctx, self._pa_state_cb, None)
-
-		c.pa.context_set_subscribe_callback(self._ctx, self._pa_subscribe_cb, None)
+		self._ctx_init()
 		self.event_types = sorted(PulseEventTypeEnum._values.values())
 		self.event_facilities = sorted(PulseEventFacilityEnum._values.values())
 		self.event_masks = sorted(PulseEventMaskEnum._values.values())
 		self.event_callback = None
+
+	def _ctx_init(self):
+		if self._ctx:
+			with self._loop_lock:
+				self.disconnect()
+				c.pa.context_unref(self._ctx)
+		self._ctx = c.pa.context_new(self._api, self.name)
+		c.pa.context_set_state_callback(self._ctx, self._pa_state_cb, None)
+		c.pa.context_set_subscribe_callback(self._ctx, self._pa_subscribe_cb, None)
 
 	def connect(self, autospawn=False, wait=False):
 		'''Connect to pulseaudio server.
@@ -362,6 +391,7 @@ class Pulse(object):
 		if self._loop_closed:
 			raise PulseError('Eventloop object was already'
 				' destroyed and cannot be reused from this instance.')
+		if self.connected is not None: self._ctx_init()
 		flags, self.connected = 0, None
 		if not autospawn: flags |= c.PA_CONTEXT_NOAUTOSPAWN
 		if wait: flags |= c.PA_CONTEXT_NOFAIL
@@ -375,13 +405,15 @@ class Pulse(object):
 		c.pa.context_disconnect(self._ctx)
 
 	def close(self):
-		if self._loop:
-			if self._loop_running:
-				self._loop_closed = True
-				c.pa.mainloop_quit(self._loop, 0)
-				return
+		if not self._loop: return
+		if self._loop_running: # called from another thread
+			self._loop_closed = True
+			c.pa.mainloop_quit(self._loop, 0)
+			return # presumably will be closed in a thread that's running it
+		with self._loop_lock:
 			try:
 				self.disconnect()
+				c.pa.context_unref(self._ctx)
 				c.pa.mainloop_free(self._loop)
 			finally: self._ctx = self._loop = None
 
@@ -395,7 +427,6 @@ class Pulse(object):
 			if state == c.PA_CONTEXT_READY: self.connected = True
 			elif state in [c.PA_CONTEXT_FAILED, c.PA_CONTEXT_TERMINATED]:
 				self.connected, self._loop_stop = False, True
-		return 0
 
 	def _pulse_subscribe_cb(self, ctx, ev, idx, userdata):
 		if not self.event_callback: return
@@ -416,8 +447,8 @@ class Pulse(object):
 
 	@contextmanager
 	def _pulse_loop(self):
-		if self._loop_lock: self._loop_lock.acquire()
-		try:
+		with self._loop_lock:
+			if not self._loop: return
 			if self._loop_running:
 				raise PulseError(
 					'Running blocking pulse operations from pulse eventloop callbacks'
@@ -431,8 +462,6 @@ class Pulse(object):
 			finally:
 				self._loop_running = False
 				if self._loop_closed: self.close() # to free() after stopping it
-		finally:
-			if self._loop_lock: self._loop_lock.release()
 
 	def _pulse_run(self):
 		with self._pulse_loop() as loop: c.pa.mainloop_run(loop, self._ret)
@@ -448,7 +477,7 @@ class Pulse(object):
 			cb = lambda s=True,k=act_id: self._actions.update({k: bool(s)})
 			if not raw: cb = c.PA_CONTEXT_SUCCESS_CB_T(lambda ctx,s,d,cb=cb: cb(s))
 			yield cb
-			while self._actions[act_id] is None: self._pulse_iterate()
+			while self.connected and self._actions[act_id] is None: self._pulse_iterate()
 			if not self._actions[act_id]: raise PulseOperationFailed(act_id)
 		finally: self._actions.pop(act_id, None)
 
@@ -472,7 +501,6 @@ class Pulse(object):
 	def _pulse_info_cb(self, info_cls, data_list, done_cb, ctx, info, eof, userdata):
 		if eof: done_cb()
 		else: data_list.append(info_cls(info[0]))
-		return 0
 
 	def _pulse_get_list(cb_t, pulse_func, info_cls, singleton=False, index_arg=True):
 		def _wrapper(self, index=None):
@@ -501,6 +529,13 @@ class Pulse(object):
 		_add_wrap_doc(_wrapper)
 		_add_wrap_doc(_decorator_or_method)
 		return _decorator_or_method
+
+	get_sink_by_name = _pulse_get_list(
+		c.PA_SINK_INFO_CB_T,
+		c.pa.context_get_sink_info_by_name, PulseSinkInfo )
+	get_source_by_name = _pulse_get_list(
+		c.PA_SOURCE_INFO_CB_T,
+		c.pa.context_get_source_info_by_name, PulseSourceInfo )
 
 	sink_input_list = _pulse_get_list(
 		c.PA_SINK_INPUT_INFO_CB_T,
@@ -830,7 +865,9 @@ def connect_to_cli(server=None, as_file=True, socket_timeout=1.0, attempts=5, re
 				with open(pid_path) as src: os.kill(int(src.read().strip()), signal.SIGUSR2)
 			time.sleep(max(0, retry_delay - (c.mono_time() - ts)))
 
-		return s.makefile('rw', 1) if as_file else s
+		if as_file: res = s.makefile('rw', 1)
+		else: res, s = s, None # to avoid closing this socket
+		return res
 
 	except Exception as err: # CallError, socket.error, IOError (pidfile), OSError (os.kill)
 		raise PulseError( 'Failed to connect to pulse'
