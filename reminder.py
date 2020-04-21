@@ -59,9 +59,9 @@ class Reminder(object):
             spin.set_range(0, 23 if label == 'h' else 59)
 
             self.spins.append(spin)
-            label = Gtk.Label(label)
-            label.set_margin_left(5)
-            label.set_margin_right(5)
+            label = Gtk.Label.new(label)
+            label.set_margin_start(5)
+            label.set_margin_end(5)
             hbox.add(label)
             hbox.add(spin)
 
@@ -75,7 +75,6 @@ class Reminder(object):
         self.window.set_border_width(15)
         self.window.connect('delete-event', self.on_window_close)
         self.window.connect('destroy-event', self.on_window_close)
-        self.window.show_all()
 
     def on_window_close(self, *args):
         self.window.hide()
@@ -90,8 +89,13 @@ class Reminder(object):
         self.icon.connect('activate', self.activate_menu)
 
     def update_clock(self):
-        markup = '<span font="25">{hours:2d}:{minutes:02d}:{seconds:02d}</span>'
-        self.clock.set_markup(markup.format(**self.discount))
+        t_span = '<span font="25">{}</span>'
+        if self.start is not None and self.timedelta is not None:
+            t_time = '{hours:2d}:{minutes:02d}:{seconds:02d}'
+        else:
+            t_time = 'X:YY:ZZ'
+
+        self.clock.set_markup(t_span.format(t_time.format(**self.discount)))
 
     def setup_menu(self):
         self.menu = Gtk.Menu()
