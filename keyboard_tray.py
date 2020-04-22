@@ -8,22 +8,22 @@ import cairo
 import gi
 gi.require_version('Gtk', '3.0')
 
-from gi.repository import GObject
 from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
 
-FONT_SIZE = 0.125
-ICON_SIZE = 0.17
-X_OFFSET = 0.0115
-Y_OFFSET = 0.12
+FONT_SIZE = 0.2
+ICON_SIZE = 0.29
+
+X_OFFSET = 0.01
+Y_OFFSET = 0.19
 
 DPI = Gdk.Screen.get_default().get_resolution()
 FONT_FACE = "Ubuntu"
-FONT_SIZE *= DPI
-ICON_SIZE *= DPI
+FONT_SIZE = int(FONT_SIZE * DPI)
+ICON_SIZE = int(ICON_SIZE * DPI)
 X_OFFSET *= DPI
 Y_OFFSET *= DPI
 EXIT_LABEL = "Exit"
@@ -190,7 +190,6 @@ class KeyboardIcon(object):
         self.icon.connect('popup-menu', self.popup_menu_icon)
         self._init_xkb_handler()
         self.update_icon()
-        self.icon.set_visible(True)
 
     def _exit(self, *args):
         self.xcb.xcb_disconnect(self.conn)
@@ -375,16 +374,14 @@ class KeyboardIcon(object):
 
     def update_icon(self):
         group = self.get_xkb_group()
-        self.icon.set_from_pixbuf(
-            self.langs[group]
-        )
+        self.icon.set_property("pixbuf", self.langs[group])
 
     def popup_menu_icon(self, widget, event_button, event_time):
         self.menu.popup(None, None, None, None, 0, event_time)
 
     def _init_menu(self):
         self.menu = Gtk.Menu()
-        close_item = Gtk.MenuItem(EXIT_LABEL)
+        close_item = Gtk.MenuItem(label=EXIT_LABEL)
         close_item.connect("activate", self._exit)
         self.menu.append(close_item)
         self.menu.show_all()
@@ -412,7 +409,7 @@ class KeyboardIcon(object):
         )
         pixbuf.fill(0xff000000)
         surface = cairo.ImageSurface(
-            cairo.FORMAT_ARGB32,
+            cairo.FORMAT_RGB24,
             pixbuf.get_width(),
             pixbuf.get_height()
         )
@@ -439,7 +436,6 @@ class KeyboardIcon(object):
         return pixbuf
 
     def run(self):
-        GObject.threads_init()
         self.loop = GLib.MainLoop()
         self.loop.run()
 

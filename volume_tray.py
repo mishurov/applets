@@ -17,7 +17,8 @@ from pulsectl import Pulse
 # relative units
 VOLUME_WIDTH = 2.1
 VOLUME_HEIGHT = 0.52
-ICON_SIZE = 0.17
+
+ICON_SIZE = 24
 
 SCROLL_BY = 1
 
@@ -33,7 +34,6 @@ CMD_MIXER = "pavucontrol"
 DPI = Gdk.Screen.get_default().get_resolution()
 VOLUME_WIDTH *= DPI
 VOLUME_HEIGHT *= DPI
-ICON_SIZE *= DPI
 
 PREFIX_ANALOG = "alsa"
 PREFIX_BT = "bluez"
@@ -278,8 +278,8 @@ class SoundIcon(object):
             icon_name = 'audio-volume-medium-panel'
         if icon_name != self.icon_name:
             self.icon_name = icon_name
-            icon = self.icon_theme.load_icon(icon_name, ICON_SIZE, 0)
-            self.icon.set_property("pixbuf", icon)
+            gicon = self.icon_theme.load_icon(icon_name, ICON_SIZE, 0)
+            self.icon.set_property("gicon", gicon)
 
     def create_mixer(self):
         item = Gtk.MenuItem(label=LABEL_MIXER)

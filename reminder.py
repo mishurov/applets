@@ -7,7 +7,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 
 
-ICON_SIZE = 0.15
+ICON_SIZE = 24
 ICON_NAME = 'alarm-clock'
 ICON_NAME_URGENT = 'alarm-clock-urgent'
 POPUP_TEXT = 'Alarm'
