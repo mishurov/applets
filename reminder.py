@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import os
+import re
+import json
 from datetime import datetime, timedelta
 
 import gi
@@ -14,6 +17,16 @@ POPUP_TEXT = 'Alarm'
 BUTTON_LABEL = 'Start'
 EXIT_LABEL = 'Quit'
 
+HOME = os.environ.get("HOME")
+CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
+REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
+
+
+def str_to_timedelta(s):
+    m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
+    kwargs = {key: float(val) for key, val in m.groupdict().items()}
+    return timedelta(**kwargs)
+
 
 class Reminder(object):
     start = None
@@ -25,8 +38,29 @@ class Reminder(object):
         self.setup_menu()
         self.setup_popup()
         self.setup_window()
-        self.update_clock()
+        self.init_saved_alarm()
+        self.idle()
         self.run()
+
+    def init_saved_alarm(self):
+        if not os.path.isfile(REMINDER_FILE):
+            os.mknod(REMINDER_FILE)
+        else:
+            with open(REMINDER_FILE, "r") as reminder_file:
+                data = reminder_file.read()
+                if data:
+                    data = json.loads(data)
+                    self.start = datetime.fromisoformat(data['start'])
+                    self.timedelta = str_to_timedelta(data['timedelta'])
+
+    def save_alarm(self):
+        data = {
+            'start': self.start.isoformat(),
+            'timedelta': str(self.timedelta),
+        }
+        data = json.dumps(data, indent=4)
+        with open(REMINDER_FILE, "w") as reminder_file:
+            reminder_file.write(data)
 
     def on_button_clicked(self, *args):
         self.window.hide()
@@ -35,6 +69,7 @@ class Reminder(object):
         s = self.spins[2].get_value_as_int()
         self.timedelta = timedelta(hours=h, minutes=m, seconds=s)
         self.start = datetime.now()
+        self.save_alarm()
 
     def setup_window(self):
         self.window = Gtk.Window()
@@ -160,6 +195,8 @@ class Reminder(object):
                 self.timedelta = None
                 self.discount.update({'hours': 0, 'minutes': 0, 'seconds': 0})
                 self.icon.set_property("gicon", self.gicon_urgent)
+                with open(REMINDER_FILE, "w") as reminder_file:
+                    reminder_file.write('')
                 self.popup.show_all()
 
             if self.menu.get_visible():
