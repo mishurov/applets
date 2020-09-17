@@ -13,6 +13,7 @@ from gi.repository import Gtk, Gdk, GLib
 ICON_SIZE = 24
 ICON_NAME = 'alarm-clock'
 ICON_NAME_URGENT = 'alarm-clock-urgent'
+ICON_NAME_ACTIVE = 'alarm-clock-active'
 POPUP_TEXT = 'Alarm'
 BUTTON_LABEL = 'Start'
 EXIT_LABEL = 'Quit'
@@ -70,6 +71,7 @@ class Reminder(object):
         self.timedelta = timedelta(hours=h, minutes=m, seconds=s)
         self.start = datetime.now()
         self.save_alarm()
+        self.icon.set_property("gicon", self.gicon_active)
 
     def setup_window(self):
         self.window = Gtk.Window()
@@ -120,6 +122,7 @@ class Reminder(object):
         icon_theme = Gtk.IconTheme.get_default()
         self.gicon = icon_theme.load_icon(ICON_NAME, ICON_SIZE, 0)
         self.gicon_urgent = icon_theme.load_icon(ICON_NAME_URGENT, ICON_SIZE, 0)
+        self.gicon_active = icon_theme.load_icon(ICON_NAME_ACTIVE, ICON_SIZE, 0)
         self.icon.set_property("gicon", self.gicon)
         self.icon.connect('activate', self.activate_menu)
 
