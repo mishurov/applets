@@ -64,17 +64,18 @@ A patch to enable a tmux-like "zoom" mode: to maximize a container and to don't 
 i3 wm zoom patch
 ================
 
-**From source** (4.16.1)
+**From source** (4.18.2)
 
 .. code-block:: bash
 
     # needs dev dependencies specific for a distribution
+    # e.g. https://github.com/i3/i3/blob/4.18.2/debian/control
     git clone https://github.com/mishurov/applets
     cd applets/i3patch
     git clone https://github.com/i3/i3
     cd i3
-    git checkout 4.16.1
-    git apply ../files/add_zoom_i3_4.16.1.patch
+    git checkout 4.18.2
+    git apply ../files/add_zoom_i3_4.18.2.patch
     aclocal && autoheader && automake --add-missing && autoconf
     ./configure
     cd ./x86_64-pc-linux-gnu && make -j4
