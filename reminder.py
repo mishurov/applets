@@ -53,6 +53,7 @@ class Reminder(object):
                     data = json.loads(data)
                     self.start = datetime.fromisoformat(data['start'])
                     self.timedelta = str_to_timedelta(data['timedelta'])
+                    self.icon.set_property("gicon", self.gicon_active)
 
     def save_alarm(self):
         data = {
