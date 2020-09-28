@@ -441,5 +441,7 @@ class KeyboardIcon(object):
 
 
 if __name__ == '__main__':
+    # start class name with underscore so i3bar puts the icon first
+    Gdk.set_program_class('_ input sources')
     keyboard_icon = KeyboardIcon()
     keyboard_icon.run()
