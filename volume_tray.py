@@ -4,11 +4,15 @@ import threading
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
+gi.require_version('Keybinder', '3.0')  # gir1.2-keybinder-3.0
+gi.require_version('Notify', '0.7')  # gir1.2-notify-0.7
 
 from gi.repository import GObject
 from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import Keybinder
+from gi.repository import Notify
 
 # pulsectl 18.12.5
 from pulsectl import Pulse
@@ -21,6 +25,7 @@ VOLUME_HEIGHT = 0.52
 ICON_SIZE = 24
 
 SCROLL_BY = 1
+MEDIA_KEY_STEP = 5
 
 LABEL_MIXER = "Pulseaudio..."
 LABEL_ANALOG = "Analog Stereo"
@@ -243,7 +248,43 @@ class SoundIcon(object):
         self.mixer.start_listener(self.update_icon)
         self.create_menu()
         self.update_icon()
+        self.init_keys()
         self.run()
+
+    def change_vol_notify(self, key):
+        if key == 'XF86AudioMute':
+            self.mixer.toggle_mute()
+        elif key == 'XF86AudioRaiseVolume':
+            self.mixer.change_volume(MEDIA_KEY_STEP)
+        elif key == 'XF86AudioLowerVolume':
+            self.mixer.change_volume(-MEDIA_KEY_STEP)
+        volume, mute = self.mixer.get_sink_volume_and_mute()
+        icon_name = self.compute_icon_name(volume, mute)
+        if key == 'XF86AudioMute':
+            summary = 'Mute' if mute else 'Unmute'
+        else:
+            summary = 'Volume {}%'.format(int(volume))
+        self.notification.update(summary, '', icon_name)
+        self.notification.show()
+
+    def init_keys(self):
+        Keybinder.init()
+        Notify.init('Volume Tray')
+        self.notification = Notify.Notification.new('', '', 'volume')
+        Keybinder.bind('XF86AudioRaiseVolume', self.change_vol_notify)
+        Keybinder.bind('XF86AudioLowerVolume', self.change_vol_notify)
+        Keybinder.bind('XF86AudioMute', self.change_vol_notify)
+
+    def compute_icon_name(self, volume, mute):
+        if mute:
+            icon_name = 'audio-volume-muted'
+        elif volume < 25:
+            icon_name = 'audio-volume-low'
+        elif volume > 75:
+            icon_name = 'audio-volume-high'
+        else:
+            icon_name = 'audio-volume-medium'
+        return icon_name
 
     def create_icon(self):
         self.icon_name = ''
@@ -268,16 +309,9 @@ class SoundIcon(object):
         if not self.menu.get_visible():
             self.mixer.get_active_sink()
         volume, mute = self.mixer.get_sink_volume_and_mute()
-        if mute:
-            icon_name = 'audio-volume-muted-panel'
-        elif volume < 25:
-            icon_name = 'audio-volume-low-panel'
-        elif volume > 75:
-            icon_name = 'audio-volume-high-panel'
-        else:
-            icon_name = 'audio-volume-medium-panel'
+        icon_name = self.compute_icon_name(volume, mute)
         if icon_name != self.icon_name:
-            self.icon_name = icon_name
+            self.icon_name = icon_name + '-panel'
             gicon = self.icon_theme.load_icon(icon_name, ICON_SIZE, 0)
             self.icon.set_property("gicon", gicon)
 
