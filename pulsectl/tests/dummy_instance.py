@@ -39,6 +39,7 @@ def _dummy_pulse_init(info):
 	#  t2% PA_TMPDIR=/tmp/pulsectl-tests PA_REUSE=1234,1235 python -m -m unittest pulsectl.tests.all
 	env_tmpdir, env_debug, env_reuse = map(
 		os.environ.get, ['PA_TMPDIR', 'PA_DEBUG', 'PA_REUSE'] )
+	if not os.environ.get('PATH'): os.environ['PATH'] = '/usr/local/bin:/usr/bin:/bin'
 
 	tmp_base = env_tmpdir or info.get('tmp_dir')
 	if not tmp_base:
@@ -68,11 +69,12 @@ def _dummy_pulse_init(info):
 
 	if info.proc and info.proc.poll() is not None: info.proc = None
 	if not env_reuse and not info.get('proc'):
-		env = dict(XDG_RUNTIME_DIR=tmp_base, PULSE_STATE_PATH=tmp_base)
+		env = dict( PATH=os.environ['PATH'],
+			XDG_RUNTIME_DIR=tmp_base, PULSE_STATE_PATH=tmp_base )
 		log_level = 'error' if not env_debug else 'debug'
 		info.proc = subprocess.Popen(
-			[ 'pulseaudio', '--daemonize=no', '--fail',
-				'-nF', '/dev/stdin', '--exit-idle-time=-1', '--log-level={}'.format(log_level) ],
+			['pulseaudio', '--daemonize=no', '--fail',
+				'-nF', '/dev/stdin', '--exit-idle-time=-1', '--log-level={}'.format(log_level)],
 			env=env, stdin=subprocess.PIPE )
 		bind4, bind6 = info.sock_tcp4.split(':'), info.sock_tcp6.rsplit(':', 1)
 		bind4, bind6 = (bind4[1], bind4[2]), (bind6[0].split(':', 1)[1].strip('[]'), bind6[1])
@@ -149,6 +151,7 @@ class DummyTests(unittest.TestCase):
 	@classmethod
 	def tearDownClass(cls):
 		dummy_pulse_cleanup(cls.instance_info)
+		cls.proc = cls.tmp_dir = None
 
 
 	# Fuzzy float comparison is necessary for volume,
@@ -315,9 +318,15 @@ class DummyTests(unittest.TestCase):
 
 	def test_get_sink_src(self):
 		with pulsectl.Pulse('t', server=self.sock_unix) as pulse:
-			src, sink = pulse.source_list()[0], pulse.sink_list()[0]
+			src, sink = pulse.source_list(), pulse.sink_list()
+			src_nx, sink_nx = max(s.index for s in src)+1, max(s.index for s in sink)+1
+			src, sink = src[0], sink[0]
 			self.assertEqual(sink.index, pulse.get_sink_by_name(sink.name).index)
 			self.assertEqual(src.index, pulse.get_source_by_name(src.name).index)
+			with self.assertRaises(pulsectl.PulseIndexError): pulse.source_info(src_nx)
+			with self.assertRaises(pulsectl.PulseIndexError): pulse.sink_info(sink_nx)
+
+	# def test_get_card(self): no cards to test these calls with :(
 
 	def test_module_funcs(self):
 		with pulsectl.Pulse('t', server=self.sock_unix) as pulse:
@@ -338,7 +347,8 @@ class DummyTests(unittest.TestCase):
 			pulse.event_callback_set(stream_ev_cb)
 
 			paplay = subprocess.Popen(
-				['paplay', '--raw', '/dev/zero'], env=dict(XDG_RUNTIME_DIR=self.tmp_dir) )
+				['paplay', '--raw', '/dev/zero'], env=dict(
+					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir ) )
 			try:
 				if not stream_started: pulse.event_listen()
 				self.assertTrue(bool(stream_started))
@@ -370,6 +380,8 @@ class DummyTests(unittest.TestCase):
 			finally:
 				if paplay.poll() is None: paplay.kill()
 				paplay.wait()
+
+			with self.assertRaises(pulsectl.PulseIndexError): pulse.sink_input_info(stream.index)
 
 	def test_ext_stream_restore(self):
 		sr_name1 = 'sink-input-by-application-name:pulsectl-test-1'
@@ -435,7 +447,8 @@ class DummyTests(unittest.TestCase):
 			pulse.event_callback_set(stream_ev_cb)
 
 			paplay = subprocess.Popen(
-				['paplay', '--raw', '/dev/zero'], env=dict(XDG_RUNTIME_DIR=self.tmp_dir) )
+				['paplay', '--raw', '/dev/zero'], env=dict(
+					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir ) )
 			try:
 				if not stream_started: pulse.event_listen()
 				stream_idx, = stream_started
@@ -456,6 +469,55 @@ class DummyTests(unittest.TestCase):
 
 				with self.assertRaises(pulsectl.PulseOperationFailed):
 					pulse.sink_input_move(stream.index, sink_nx)
+
+			finally:
+				if paplay.poll() is None: paplay.kill()
+				paplay.wait()
+
+	def test_get_peak_sample(self):
+		# Note: this test takes at least multiple seconds to run
+		with pulsectl.Pulse('t', server=self.sock_unix) as pulse:
+			source_any = max(s.index for s in pulse.source_list())
+			source_nx = source_any + 1
+
+			time.sleep(0.3) # make sure previous streams die
+			peak = pulse.get_peak_sample(source_any, 0.3)
+			self.assertEqual(peak, 0)
+
+			stream_started = list()
+			def stream_ev_cb(ev):
+				if ev.t != 'new': return
+				stream_started.append(ev.index)
+				raise pulsectl.PulseLoopStop
+			pulse.event_mask_set('sink_input')
+			pulse.event_callback_set(stream_ev_cb)
+
+			paplay = subprocess.Popen(
+				['paplay', '--raw', '/dev/urandom'], env=dict(
+					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir ) )
+			try:
+				if not stream_started: pulse.event_listen()
+				stream_idx, = stream_started
+				si = pulse.sink_input_info(stream_idx)
+				sink = pulse.sink_info(si.sink)
+				source = pulse.source_info(sink.monitor_source)
+
+				# First poll can randomly fail if too short, probably due to latency or such
+				peak = pulse.get_peak_sample(sink.monitor_source, 3)
+				self.assertGreater(peak, 0)
+
+				peak = pulse.get_peak_sample(source.index, 0.3, si.index)
+				self.assertGreater(peak, 0)
+				peak = pulse.get_peak_sample(source.name, 0.3, si.index)
+				self.assertGreater(peak, 0)
+				peak = pulse.get_peak_sample(source_nx, 0.3)
+				self.assertEqual(peak, 0)
+
+				paplay.terminate()
+				paplay.wait()
+
+				peak = pulse.get_peak_sample(source.index, 0.3, si.index)
+				self.assertEqual(peak, 0)
 
 			finally:
 				if paplay.poll() is None: paplay.kill()

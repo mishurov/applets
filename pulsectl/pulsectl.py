@@ -31,6 +31,10 @@ def assert_pulse_object(obj):
 		raise TypeError( 'Pulse<something>Info'
 			' object is required instead of value: [{}] {}', type(obj), obj )
 
+class FakeLock():
+	def __enter__(self): return self
+	def __exit__(self, *err): pass
+
 
 @ft.total_ordering
 class EnumValue(object):
@@ -80,10 +84,6 @@ class Enum(object):
 
 	def __repr__(self):
 		return '<Enum {} [{}]>'.format(self._name, ' '.join(sorted(self._values.keys())))
-
-class FakeLock():
-	def __enter__(self): return self
-	def __exit__(self, *err): pass
 
 
 PulseEventTypeEnum = Enum('event-type', c.PA_EVENT_TYPE_MAP)
@@ -145,6 +145,7 @@ class PulseObject(object):
 				self.state = PulseStateEnum._c_val(
 					struct.state, u'state.{}'.format(struct.state) )
 				self.state_values = sorted(PulseStateEnum._values.values())
+			if hasattr(struct, 'corked'): self.corked = bool(struct.corked)
 			self._init_from_struct(struct)
 
 	def _get_wrapper(self, cls_base):
@@ -206,7 +207,7 @@ class PulseSinkInfo(PulseObject):
 		return self._as_str(self.volume, fields='index name description mute')
 
 class PulseSinkInputInfo(PulseObject):
-	c_struct_fields = ( 'index name mute client'
+	c_struct_fields = ( 'index name mute corked client'
 		' owner_module sink sample_spec'
 		' buffer_usec sink_usec resample_method driver' )
 
@@ -222,7 +223,7 @@ class PulseSourceInfo(PulseObject):
 		return self._as_str(self.volume, fields='index name description mute')
 
 class PulseSourceOutputInfo(PulseObject):
-	c_struct_fields = ( 'index name mute client'
+	c_struct_fields = ( 'index name mute corked client'
 		' owner_module source sample_spec'
 		' buffer_usec source_usec resample_method driver' )
 
@@ -488,7 +489,7 @@ class Pulse(object):
 			ts = c.mono_time()
 			ts_deadline = timeout and (ts + timeout)
 			while True:
-				delay = max(0, int((ts_deadline - ts) * 1000000)) if ts_deadline else -1
+				delay = max(0, int((ts_deadline - ts) * 1000)) if ts_deadline else -1
 				c.pa.mainloop_prepare(loop, delay) # usec
 				c.pa.mainloop_poll(loop)
 				if self._loop_closed: break # interrupted by close() or such
@@ -499,36 +500,36 @@ class Pulse(object):
 
 
 	def _pulse_info_cb(self, info_cls, data_list, done_cb, ctx, info, eof, userdata):
+		# No idea where callbacks with "userdata != NULL" come from,
+		#  but "info" pointer in them is always invalid, so they are discarded here.
+		# Looks like some kind of mixup or corruption in libpulse memory?
+		# See also: https://github.com/mk-fg/python-pulse-control/issues/35
+		if userdata is not None: return
+		# Empty result list and conn issues are checked elsewhere.
+		# Errors here are non-descriptive (errno), so should not be useful anyway.
+		# if eof < 0: done_cb(s=False)
 		if eof: done_cb()
 		else: data_list.append(info_cls(info[0]))
 
 	def _pulse_get_list(cb_t, pulse_func, info_cls, singleton=False, index_arg=True):
-		def _wrapper(self, index=None):
+		def _wrapper_method(self, index=None):
 			data = list()
 			with self._pulse_op_cb(raw=True) as cb:
 				cb = cb_t(
 					ft.partial(self._pulse_info_cb, info_cls, data, cb) if not singleton else
 					lambda ctx, info, userdata, cb=cb: data.append(info_cls(info[0])) or cb() )
-				pulse_func(self._ctx, *([index, cb, None] if index is not None else [cb, None]))
+				pa_op = pulse_func( self._ctx,
+					*([index, cb, None] if index is not None else [cb, None]) )
+			c.pa.operation_unref(pa_op)
 			data = data or list()
 			if index is not None or singleton:
 				if not data: raise PulseIndexError(index)
 				data, = data
-			return _wrapper.func(self, data) if _wrapper.func else data
-		_wrapper.func = None
-		def _add_wrap_doc(func):
-			func.__name__ = '...'
-			func.__doc__ = 'Signature: func({})'.format(
-				'' if pulse_func.__name__.endswith('_list') or singleton or not index_arg else 'index' )
-		def _decorator_or_method(func_or_self=None, index=None):
-			if func_or_self.__class__.__name__ == 'Pulse':
-				return _wrapper(func_or_self, index)
-			elif func_or_self: _wrapper.func = func_or_self
-			assert index is None, index
-			return _wrapper
-		_add_wrap_doc(_wrapper)
-		_add_wrap_doc(_decorator_or_method)
-		return _decorator_or_method
+			return data
+		_wrapper_method.__name__ = '...'
+		_wrapper_method.__doc__ = 'Signature: func({})'.format(
+			'' if pulse_func.__name__.endswith('_list') or singleton or not index_arg else 'index' )
+		return _wrapper_method
 
 	get_sink_by_name = _pulse_get_list(
 		c.PA_SINK_INFO_CB_T,
@@ -536,6 +537,9 @@ class Pulse(object):
 	get_source_by_name = _pulse_get_list(
 		c.PA_SOURCE_INFO_CB_T,
 		c.pa.context_get_source_info_by_name, PulseSourceInfo )
+	get_card_by_name = _pulse_get_list(
+		c.PA_CARD_INFO_CB_T,
+		c.pa.context_get_card_info_by_name, PulseCardInfo )
 
 	sink_input_list = _pulse_get_list(
 		c.PA_SINK_INPUT_INFO_CB_T,
@@ -766,6 +770,10 @@ class Pulse(object):
 		self.volume_set(obj, obj.volume)
 
 	def volume_get_all_chans(self, obj):
+		# Purpose of this func can be a bit confusing, being here next to set/change ones
+		'''Get "flat" volume float value for info-object as a mean of all channel values.
+			Note that this DOES NOT query any kind of updated values from libpulse,
+				and simply returns value(s) stored in passed object, i.e. same ones for same object.'''
 		assert_pulse_object(obj)
 		return obj.volume.value_flat
 
@@ -813,6 +821,76 @@ class Pulse(object):
 		if not func_err_handler: func_err_handler = traceback.print_exception
 		self._pa_poll_cb = c.PA_POLL_FUNC_T(ft.partial(self._pulse_poll_cb, func, func_err_handler))
 		c.pa.mainloop_set_poll_func(self._loop, self._pa_poll_cb, None)
+
+
+	def get_peak_sample(self, source, timeout, stream_idx=None):
+		'''Returns peak (max) value in 0-1.0 range for samples in source/stream within timespan.
+			"source" can be either int index of pulseaudio source
+				(i.e. source.index), its name (source.name), or None to use default source.
+			Resulting value is what pulseaudio returns as
+				PA_SAMPLE_FLOAT32BE float after "timeout" seconds.
+			If specified source does not exist, 0 should be returned after timeout.
+			This can be used to detect if there's any sound
+				on the microphone or any sound played through a sink via its monitor_source index,
+				or same for any specific stream connected to these (if "stream_idx" is passed).
+			Sample stream masquerades as
+				application.id=org.PulseAudio.pavucontrol to avoid being listed in various mixer apps.
+			Example - get peak for specific sink input "si" for 0.8 seconds:
+				pulse.get_peak_sample(pulse.sink_info(si.sink).monitor_source, 0.8, si.index)'''
+		samples, proplist = [0], c.pa.proplist_from_string('application.id=org.PulseAudio.pavucontrol')
+		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32BE, rate=25, channels=1)
+		s = c.pa.stream_new_with_proplist(self._ctx, 'peak detect', c.byref(ss), None, proplist)
+		c.pa.proplist_free(proplist)
+
+		@c.PA_STREAM_REQUEST_CB_T
+		def read_cb(s, bs, userdata):
+			buff, bs = c.c_void_p(), c.c_int(bs)
+			c.pa.stream_peek(s, buff, c.byref(bs))
+			try:
+				if not buff or bs.value < 4: return
+				# This assumes that native byte order for floats is BE, same as pavucontrol
+				samples[0] = max(samples[0], c.cast(buff, c.POINTER(c.c_float))[0])
+			finally:
+				# stream_drop() flushes buffered data (incl. buff=NULL "hole" data)
+				# stream.h: "should not be called if the buffer is empty"
+				if bs.value: c.pa.stream_drop(s)
+
+		if stream_idx is not None: c.pa.stream_set_monitor_stream(s, stream_idx)
+		c.pa.stream_set_read_callback(s, read_cb, None)
+		if source is not None: source = unicode(source).encode('utf-8')
+		try:
+			c.pa.stream_connect_record( s, source,
+				c.PA_BUFFER_ATTR(fragsize=4, maxlength=2**32-1),
+				c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT |
+					c.PA_STREAM_ADJUST_LATENCY | c.PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND )
+		except c.pa.CallError:
+			c.pa.stream_unref(s)
+			raise
+
+		try: self._pulse_poll(timeout)
+		finally:
+			try: c.pa.stream_disconnect(s)
+			except c.pa.CallError: pass # stream was removed
+
+		return min(1.0, samples[0])
+
+	def play_sample(self, name, sink=None, volume=1.0, proplist_str=None):
+		'''Play specified sound sample,
+				with an optional sink object/name/index, volume and proplist string parameters.
+			Sample must be stored on the server in advance, see e.g. "pacmd list-samples".
+			See also libcanberra for an easy XDG theme sample loading, storage and playback API.'''
+		if isinstance(sink, PulseSinkInfo): sink = sink.index
+		sink = str(sink) if sink is not None else None
+		proplist = c.pa.proplist_from_string(proplist_str) if proplist_str else None
+		volume = int(round(volume*c.PA_VOLUME_NORM))
+		with self._pulse_op_cb() as cb:
+			try:
+				if not proplist:
+					c.pa.context_play_sample(self._ctx, name, sink, volume, cb, None)
+				else:
+					c.pa.context_play_sample_with_proplist(
+						self._ctx, name, sink, volume, proplist, cb, None )
+			except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
 
 
 def connect_to_cli(server=None, as_file=True, socket_timeout=1.0, attempts=5, retry_delay=0.3):

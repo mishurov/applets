@@ -4,7 +4,7 @@ from __future__ import print_function
 
 # C Bindings
 
-import os, sys, functools as ft
+import os, sys, ctypes.util, functools as ft
 from ctypes import *
 
 
@@ -94,6 +94,13 @@ PA_SUBSCRIPTION_EVENT_NEW = 0x0000
 PA_SUBSCRIPTION_EVENT_CHANGE = 0x0010
 PA_SUBSCRIPTION_EVENT_REMOVE = 0x0020
 PA_SUBSCRIPTION_EVENT_TYPE_MASK = 0x0030
+
+PA_SAMPLE_FLOAT32BE = 5
+
+PA_STREAM_DONT_MOVE = 0x0200
+PA_STREAM_PEAK_DETECT = 0x0800
+PA_STREAM_ADJUST_LATENCY = 0x2000
+PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND = 0x8000
 
 def c_enum_map(**values):
 	return dict((v, force_str(k)) for k,v in values.items())
@@ -340,6 +347,15 @@ class PA_EXT_STREAM_RESTORE_INFO(Structure):
 		('mute', c_int),
 	]
 
+class PA_BUFFER_ATTR(Structure):
+	_fields_ = [
+		('maxlength', c_uint32),
+		('tlength', c_uint32),
+		('prebuf', c_uint32),
+		('minreq', c_uint32),
+		('fragsize', c_uint32),
+	]
+
 
 class POLLFD(Structure):
 	_fields_ = [
@@ -443,6 +459,15 @@ PA_SUBSCRIBE_CB_T = CFUNCTYPE(c_void_p,
 	c_int,
 	c_void_p)
 
+PA_STREAM_REQUEST_CB_T = CFUNCTYPE(c_void_p,
+	POINTER(PA_STREAM),
+	c_int,
+	c_void_p)
+
+PA_STREAM_NOTIFY_CB_T = CFUNCTYPE(c_void_p,
+	POINTER(PA_STREAM),
+	c_void_p)
+
 
 class LibPulse(object):
 
@@ -537,9 +562,11 @@ class LibPulse(object):
 			[POINTER(PA_CONTEXT), c_uint32, PA_CLIENT_INFO_CB_T, c_void_p] ),
 		pa_context_get_server_info=( 'pa_op',
 			[POINTER(PA_CONTEXT), PA_SERVER_INFO_CB_T, c_void_p] ),
-		pa_operation_unref=([POINTER(PA_OPERATION)], c_int),
+		pa_operation_unref=[POINTER(PA_OPERATION)],
 		pa_context_get_card_info_by_index=( 'pa_op',
 			[POINTER(PA_CONTEXT), c_uint32, PA_CARD_INFO_CB_T, c_void_p] ),
+		pa_context_get_card_info_by_name=( 'pa_op',
+			[POINTER(PA_CONTEXT), c_str_p, PA_CARD_INFO_CB_T, c_void_p] ),
 		pa_context_get_card_info_list=( 'pa_op',
 			[POINTER(PA_CONTEXT), PA_CARD_INFO_CB_T, c_void_p] ),
 		pa_context_set_card_profile_by_index=( 'pa_op',
@@ -572,13 +599,33 @@ class LibPulse(object):
 			[POINTER(PA_CHANNEL_MAP)], (POINTER(PA_CHANNEL_MAP), 'not_null') ),
 		pa_channel_map_snprint=([c_str_p, c_int, POINTER(PA_CHANNEL_MAP)], c_str_p),
 		pa_channel_map_parse=(
-			[POINTER(PA_CHANNEL_MAP), c_str_p], (POINTER(PA_CHANNEL_MAP), 'not_null') ) )
+			[POINTER(PA_CHANNEL_MAP), c_str_p], (POINTER(PA_CHANNEL_MAP), 'not_null') ),
+		pa_proplist_from_string=([c_str_p], POINTER(PA_PROPLIST)),
+		pa_proplist_free=[POINTER(PA_PROPLIST)],
+		pa_stream_new_with_proplist=(
+			[ POINTER(PA_CONTEXT), c_str_p,
+				POINTER(PA_SAMPLE_SPEC), POINTER(PA_CHANNEL_MAP), POINTER(PA_PROPLIST) ],
+			POINTER(PA_STREAM) ),
+		pa_stream_set_monitor_stream=([POINTER(PA_STREAM), c_uint32], 'int_check_ge0'),
+		pa_stream_set_read_callback=[POINTER(PA_STREAM), PA_STREAM_REQUEST_CB_T, c_void_p],
+		pa_stream_connect_record=(
+			[POINTER(PA_STREAM), c_str_p, POINTER(PA_BUFFER_ATTR), c_int], 'int_check_ge0' ),
+		pa_stream_unref=[POINTER(PA_STREAM)],
+		pa_stream_peek=(
+			[POINTER(PA_STREAM), POINTER(c_void_p), POINTER(c_int)], 'int_check_ge0' ),
+		pa_stream_drop=([POINTER(PA_STREAM)], 'int_check_ge0'),
+		pa_stream_disconnect=([POINTER(PA_STREAM)], 'int_check_ge0'),
+		pa_context_play_sample=( 'pa_op',
+			[POINTER(PA_CONTEXT), c_str_p, c_str_p, c_uint32, PA_CONTEXT_SUCCESS_CB_T, c_void_p] ),
+		pa_context_play_sample_with_proplist=( 'pa_op',
+			[ POINTER(PA_CONTEXT), c_str_p, c_str_p, c_uint32,
+				POINTER(PA_PROPLIST), PA_CONTEXT_SUCCESS_CB_T, c_void_p ] ) )
 
 	class CallError(Exception): pass
 
 
 	def __init__(self):
-		p = CDLL('libpulse.so.0')
+		p = CDLL(ctypes.util.find_library('libpulse') or 'libpulse.so.0')
 
 		self.funcs = dict()
 		for k, spec in self.func_defs.items():
