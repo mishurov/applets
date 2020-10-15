@@ -14,7 +14,7 @@ from gi.repository import Gdk
 from gi.repository import Keybinder
 from gi.repository import Notify
 
-# pulsectl 18.12.5
+# pulsectl 20.5.1
 from pulsectl import Pulse
 
 
@@ -28,9 +28,6 @@ SCROLL_BY = 1
 MEDIA_KEY_STEP = 5
 
 LABEL_MIXER = "Pulseaudio..."
-LABEL_ANALOG = "Analog Stereo"
-LABEL_HSP = "Headset Head Unit"
-LABEL_A2DP = "High Fidelity Playback"
 LABEL_EXIT = "Exit"
 
 CMD_MIXER = "pavucontrol"
@@ -40,8 +37,6 @@ DPI = Gdk.Screen.get_default().get_resolution()
 VOLUME_WIDTH *= DPI
 VOLUME_HEIGHT *= DPI
 
-PREFIX_ANALOG = "alsa"
-PREFIX_BT = "bluez"
 PROFILE_ANALOG = "output:analog-stereo+input:analog-stereo"
 PROFILE_HSP = "headset_head_unit"
 PROFILE_A2DP = "a2dp_sink"
@@ -61,33 +56,61 @@ class PulseMixer(object):
         "a2dp": None,
         "hsp": None,
     }
+    devices = {
+        "analog": None,
+        "a2dp": None,
+        "hsp": None,
+    }
     current_profile = None
     active_sink = None
 
     def __init__(self):
         self.pulse = Pulse('volume-control')
 
+    def filter_bluez_cards(self):
+        cards = self.pulse.card_list()
+        self.get_active_sink()
+
+        bluez_cards = []
+        other_cards = []
+
+        for c in cards:
+            if c.name.startswith('bluez'):
+                bluez_cards.append(c)
+            else:
+                other_cards.append(c)
+
+        if len(bluez_cards) < 2:
+            return cards
+
+        sink = self.active_sink
+        if not sink.name.startswith('bluez'):
+            return other_cards + bluez_cards[:1]
+
+        for c in bluez_cards:
+            if (sink.description == c.proplist.get('device.description')):
+                return other_cards + [c]
+
+        return cards
+
     def introspect(self):
         for k in self.profiles.keys():
            self.profiles[k] = None
         self.current_profile = None
+        self.cards = self.filter_bluez_cards()
 
-        for k in self.profiles.keys():
-            self.profiles[k] = None
-
-        self.cards = self.pulse.card_list()
-        self.get_active_sink()
         for card in self.cards:
+            description = card.proplist.get('device.description')
             for profile in card.profile_list:
                 if (card.profile_active.name == profile.name
                     and card.name[:4] == self.active_sink.name[:4]):
                     self.current_profile = profile
                 key = PROFILE_MAP.get(profile.name, None)
-                if key:
+                if key and profile.available:
                     self.profiles[key] = profile
+                    self.devices[key] = description
 
     def set_profile(self, key):
-        # traverse through cards to determine which ones to turn on/off
         next_profile = self.profiles[key]
         next_card = None
         for card in self.cards:
@@ -95,20 +118,18 @@ class PulseMixer(object):
                 if profile == next_profile:
                     next_card = card
                     break
-        off_card = None
-        off_profile = None
-        for card in self.cards:
+
+        if not next_card or not next_profile:
+            return
+
+        for card in self.pulse.card_list():
             if card == next_card:
                 continue
             for profile in card.profile_list:
                 if profile.name == PROFILE_OFF:
-                    off_card = card
-                    off_profile = profile
-        if not next_card or not next_profile:
-            return
+                    self.pulse.card_profile_set(card, profile)
+
         self.pulse.card_profile_set(next_card, next_profile)
-        if off_card and off_profile:
-            self.pulse.card_profile_set(off_card, off_profile)
 
     def get_active_sink(self):
         sink = None
@@ -302,6 +323,7 @@ class SoundIcon(object):
             item = getattr(self, a)
             visible = ps[a] is not None
             item.set_visible(visible)
+            item.set_label('{} ({})'.format(a, self.mixer.devices[a]))
             if visible:
                 item.set_sensitive(ps[a] != self.mixer.current_profile)
 
@@ -337,11 +359,9 @@ class SoundIcon(object):
         return True
 
     def create_profiles(self):
-        self.analog = Gtk.MenuItem(label=LABEL_ANALOG)
-        self.a2dp = Gtk.MenuItem(label=LABEL_A2DP)
-        self.hsp = Gtk.MenuItem(label=LABEL_HSP)
         attrs = ["analog", "hsp", "a2dp"]
         for attr in attrs:
+            setattr(self, attr, Gtk.MenuItem(label=attr))
             item = getattr(self, attr)
             item.connect(
                 'activate',
