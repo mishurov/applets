@@ -172,6 +172,8 @@ class Reminder(object):
 
     def activate_menu(self, widget):
         if self.icon.get_property("gicon") == self.gicon_urgent:
+            with open(REMINDER_FILE, "w") as reminder_file:
+                reminder_file.write('')
             self.icon.set_property("gicon", self.gicon)
         self.update_clock()
         current_time = Gtk.get_current_event_time()
@@ -199,8 +201,6 @@ class Reminder(object):
                 self.timedelta = None
                 self.discount.update({'hours': 0, 'minutes': 0, 'seconds': 0})
                 self.icon.set_property("gicon", self.gicon_urgent)
-                with open(REMINDER_FILE, "w") as reminder_file:
-                    reminder_file.write('')
                 self.popup.show_all()
 
             if self.menu.get_visible():
