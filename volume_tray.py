@@ -1,6 +1,5 @@
 import subprocess
 import threading
-from time import sleep
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -39,7 +38,7 @@ VOLUME_WIDTH *= DPI
 VOLUME_HEIGHT *= DPI
 
 PROFILE_ANALOG = "output:analog-stereo+input:analog-stereo"
-PROFILE_ANALOG_PRO = "pro-audio"
+#PROFILE_ANALOG_PRO = "pro-audio"
 PROFILE_HSP = "headset_head_unit"
 PROFILE_HSP_CVSD = "headset-head-unit-cvsd"
 PROFILE_HSP_MSBC = "headset-head-unit-msbc"
@@ -49,7 +48,7 @@ PROFILE_OFF = "off"
 
 PROFILE_MAP = {
     PROFILE_ANALOG: "analog",
-    PROFILE_ANALOG_PRO: "analog_pro",
+    #PROFILE_ANALOG_PRO: "analog_pro",
     PROFILE_A2DP: "a2dp",
     PROFILE_A2DP_XQ: "a2dp_xq",
     PROFILE_HSP: "hsp",
@@ -108,8 +107,8 @@ class PulseMixer(object):
         for card in self.cards:
             description = card.proplist.get('device.description')
             for profile in card.profile_list:
-                print(profile)
                 if (card.profile_active.name == profile.name
+                    and self.active_sink
                     and card.name[:4] == self.active_sink.name[:4]):
                     self.current_profile = profile
                 key = PROFILE_MAP.get(profile.name, None)
