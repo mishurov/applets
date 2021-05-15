@@ -1,5 +1,6 @@
 import subprocess
 import threading
+from time import sleep
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -38,33 +39,38 @@ VOLUME_WIDTH *= DPI
 VOLUME_HEIGHT *= DPI
 
 PROFILE_ANALOG = "output:analog-stereo+input:analog-stereo"
+PROFILE_ANALOG_PRO = "pro-audio"
 PROFILE_HSP = "headset_head_unit"
+PROFILE_HSP_CVSD = "headset-head-unit-cvsd"
+PROFILE_HSP_MSBC = "headset-head-unit-msbc"
 PROFILE_A2DP = "a2dp_sink"
+PROFILE_A2DP_XQ = "a2dp-sink-sbc_xq"
 PROFILE_OFF = "off"
 
 PROFILE_MAP = {
     PROFILE_ANALOG: "analog",
+    PROFILE_ANALOG_PRO: "analog_pro",
     PROFILE_A2DP: "a2dp",
+    PROFILE_A2DP_XQ: "a2dp_xq",
     PROFILE_HSP: "hsp",
+    PROFILE_HSP_CVSD: "hsp_cvsd",
+    PROFILE_HSP_MSBC: "hsp_msbc"
 }
+
+PROF_ATTRS = list(PROFILE_MAP.values())
 
 
 # Mixer
 class PulseMixer(object):
-    profiles = {
-        "analog": None,
-        "a2dp": None,
-        "hsp": None,
-    }
-    devices = {
-        "analog": None,
-        "a2dp": None,
-        "hsp": None,
-    }
+    profiles = {}
+    devices = {}
     current_profile = None
     active_sink = None
 
     def __init__(self):
+        for a in PROF_ATTRS:
+            self.profiles[a] = None
+            self.devices[a] = None
         self.pulse = Pulse('volume-control')
 
     def filter_bluez_cards(self):
@@ -102,6 +108,7 @@ class PulseMixer(object):
         for card in self.cards:
             description = card.proplist.get('device.description')
             for profile in card.profile_list:
+                print(profile)
                 if (card.profile_active.name == profile.name
                     and card.name[:4] == self.active_sink.name[:4]):
                     self.current_profile = profile
@@ -141,6 +148,8 @@ class PulseMixer(object):
             sink = next((s for s in sinks if s.index == sink_id), None)
         if sink is None:
             info = self.pulse.server_info()
+            if info.default_sink_name == '@DEFAULT_SINK@':
+                return None
             sink = self.pulse.get_sink_by_name(info.default_sink_name)
         self.active_sink = sink
         return self.active_sink
@@ -318,8 +327,7 @@ class SoundIcon(object):
     def update_menu(self):
         self.mixer.introspect()
         ps = self.mixer.profiles
-        attrs = ["analog", "hsp", "a2dp"]
-        for a in attrs:
+        for a in PROF_ATTRS:
             item = getattr(self, a)
             visible = ps[a] is not None
             item.set_visible(visible)
@@ -359,8 +367,7 @@ class SoundIcon(object):
         return True
 
     def create_profiles(self):
-        attrs = ["analog", "hsp", "a2dp"]
-        for attr in attrs:
+        for attr in PROF_ATTRS:
             setattr(self, attr, Gtk.MenuItem(label=attr))
             item = getattr(self, attr)
             item.connect(
@@ -370,9 +377,8 @@ class SoundIcon(object):
             )
         sep = Gtk.SeparatorMenuItem()
         self.menu.append(sep)
-        self.menu.append(self.analog)
-        self.menu.append(self.hsp)
-        self.menu.append(self.a2dp)
+        for attr in PROF_ATTRS:
+            self.menu.append(getattr(self, attr))
         sep = Gtk.SeparatorMenuItem()
         self.menu.append(sep)
 
