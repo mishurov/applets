@@ -47,13 +47,13 @@ PROFILE_A2DP_XQ = "a2dp-sink-sbc_xq"
 PROFILE_OFF = "off"
 
 PROFILE_MAP = {
-    PROFILE_ANALOG: "analog",
-    #PROFILE_ANALOG_PRO: "analog_pro",
-    PROFILE_A2DP: "a2dp",
-    PROFILE_A2DP_XQ: "a2dp_xq",
-    PROFILE_HSP: "hsp",
-    PROFILE_HSP_CVSD: "hsp_cvsd",
-    PROFILE_HSP_MSBC: "hsp_msbc"
+    PROFILE_ANALOG: "Analog Duplex",
+    #PROFILE_ANALOG_PRO: "Analog Pro",
+    PROFILE_A2DP: "A2DP SBC",
+    PROFILE_A2DP_XQ: "A2DP SBC XQ",
+    PROFILE_HSP: "HSP",
+    PROFILE_HSP_CVSD: "HSP CVSD",
+    PROFILE_HSP_MSBC: "HSP mSBC"
 }
 
 PROF_ATTRS = list(PROFILE_MAP.values())
@@ -61,81 +61,40 @@ PROF_ATTRS = list(PROFILE_MAP.values())
 
 # Mixer
 class PulseMixer(object):
-    profiles = {}
-    devices = {}
+    all_profiles = {}
     current_profile = None
     active_sink = None
 
     def __init__(self):
-        for a in PROF_ATTRS:
-            self.profiles[a] = None
-            self.devices[a] = None
         self.pulse = Pulse('volume-control')
 
-    def filter_bluez_cards(self):
-        cards = self.pulse.card_list()
-        self.get_active_sink()
-
-        bluez_cards = []
-        other_cards = []
-
-        for c in cards:
-            if c.name.startswith('bluez'):
-                bluez_cards.append(c)
-            else:
-                other_cards.append(c)
-
-        if len(bluez_cards) < 2:
-            return cards
-
-        sink = self.active_sink
-        if not sink.name.startswith('bluez'):
-            return other_cards + bluez_cards[:1]
-
-        for c in bluez_cards:
-            if (sink.description == c.proplist.get('device.description')):
-                return other_cards + [c]
-
-        return cards
-
     def introspect(self):
-        for k in self.profiles.keys():
-           self.profiles[k] = None
+        self.all_profiles = {}
         self.current_profile = None
-        self.cards = self.filter_bluez_cards()
+        self.cards = self.pulse.card_list()
 
         for card in self.cards:
             description = card.proplist.get('device.description')
             for profile in card.profile_list:
-                if (card.profile_active.name == profile.name
-                    and self.active_sink
-                    and card.name[:4] == self.active_sink.name[:4]):
-                    self.current_profile = profile
-                key = PROFILE_MAP.get(profile.name, None)
-                if key and profile.available:
-                    self.profiles[key] = profile
-                    self.devices[key] = description
+                prof_key = PROFILE_MAP.get(profile.name, None)
+                if prof_key and profile.available:
+                    key = description + '__' + prof_key
+                    self.all_profiles[key] = [card, profile]
+                    if (card.profile_active.name == profile.name
+                        and self.active_sink
+                        and card.name[:4] == self.active_sink.name[:4]):
+                        self.current_profile = key
 
     def set_profile(self, key):
-        next_profile = self.profiles[key]
-        next_card = None
-        for card in self.cards:
-            for profile in card.profile_list:
-                if profile == next_profile:
-                    next_card = card
-                    break
-
-        if not next_card or not next_profile:
+        prof = self.all_profiles[key]
+        if not prof:
             return
-
-        for card in self.pulse.card_list():
-            if card == next_card:
-                continue
-            for profile in card.profile_list:
-                if profile.name == PROFILE_OFF:
-                    self.pulse.card_profile_set(card, profile)
-
-        self.pulse.card_profile_set(next_card, next_profile)
+        card, profile = prof
+        for c, p in self.all_profiles.values():
+            if c != card:
+                self.pulse.card_profile_set(c, PROFILE_OFF)
+            elif p == profile:
+                self.pulse.card_profile_set(card, profile)
 
     def get_active_sink(self):
         sink = None
@@ -271,6 +230,8 @@ class SliderItem(Gtk.ImageMenuItem):
 
 
 class SoundIcon(object):
+    profile_items = []
+
     def __init__(self):
         self.mixer = PulseMixer()
         self.create_icon()
@@ -325,14 +286,25 @@ class SoundIcon(object):
 
     def update_menu(self):
         self.mixer.introspect()
-        ps = self.mixer.profiles
-        for a in PROF_ATTRS:
-            item = getattr(self, a)
-            visible = ps[a] is not None
-            item.set_visible(visible)
-            item.set_label('{} ({})'.format(a, self.mixer.devices[a]))
-            if visible:
-                item.set_sensitive(ps[a] != self.mixer.current_profile)
+
+        for m in self.profile_items:
+            m.destroy()
+        self.profile_items = []
+
+        for k, v in self.mixer.all_profiles.items():
+            dev, prof = k.split('__')
+            label = prof + ' (' + dev + ')'
+            item = Gtk.MenuItem(label=label)
+            item.connect(
+                'activate',
+                lambda s, m: self.mixer.set_profile(m),
+                k
+            )
+            self.menu.insert(item, 3)
+            self.profile_items.append(item)
+            item.set_visible(True)
+            if k == self.mixer.current_profile:
+                item.set_sensitive(False)
 
     def update_icon(self):
         if not self.menu.get_visible():
@@ -365,22 +337,6 @@ class SoundIcon(object):
         self.loop.quit()
         return True
 
-    def create_profiles(self):
-        for attr in PROF_ATTRS:
-            setattr(self, attr, Gtk.MenuItem(label=attr))
-            item = getattr(self, attr)
-            item.connect(
-                'activate',
-                lambda s, m: self.mixer.set_profile(m),
-                attr
-            )
-        sep = Gtk.SeparatorMenuItem()
-        self.menu.append(sep)
-        for attr in PROF_ATTRS:
-            self.menu.append(getattr(self, attr))
-        sep = Gtk.SeparatorMenuItem()
-        self.menu.append(sep)
-
     def create_menu(self):
         self.menu = Gtk.Menu()
         self.slider_item = SliderItem()
@@ -389,7 +345,8 @@ class SoundIcon(object):
         exit_item = self.create_exit()
         self.menu.append(self.slider_item)
         self.menu.append(mixer_item)
-        self.create_profiles()
+        self.menu.append(Gtk.SeparatorMenuItem())
+        self.menu.append(Gtk.SeparatorMenuItem())
         self.menu.append(exit_item)
         self.menu.show_all()
 
