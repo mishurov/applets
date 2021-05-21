@@ -44,6 +44,8 @@ PROFILE_HSP_CVSD = "headset-head-unit-cvsd"
 PROFILE_HSP_MSBC = "headset-head-unit-msbc"
 PROFILE_A2DP = "a2dp_sink"
 PROFILE_A2DP_XQ = "a2dp-sink-sbc_xq"
+PROFILE_A2DP_AAC = "a2dp-sink-aac"
+PROFILE_A2DP_APTX = "a2dp-sink-aptx"
 PROFILE_OFF = "off"
 
 PROFILE_MAP = {
@@ -51,6 +53,8 @@ PROFILE_MAP = {
     #PROFILE_ANALOG_PRO: "Analog Pro",
     PROFILE_A2DP: "A2DP SBC",
     PROFILE_A2DP_XQ: "A2DP SBC XQ",
+    PROFILE_A2DP_AAC: "A2DP AAC",
+    PROFILE_A2DP_APTX: "A2DP AptX",
     PROFILE_HSP: "HSP",
     PROFILE_HSP_CVSD: "HSP CVSD",
     PROFILE_HSP_MSBC: "HSP mSBC"
@@ -76,6 +80,7 @@ class PulseMixer(object):
         for card in self.cards:
             description = card.proplist.get('device.description')
             for profile in card.profile_list:
+                #print(profile)
                 prof_key = PROFILE_MAP.get(profile.name, None)
                 if prof_key and profile.available:
                     key = description + '__' + prof_key
