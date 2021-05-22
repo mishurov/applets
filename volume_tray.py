@@ -1,3 +1,4 @@
+import time
 import subprocess
 import threading
 
@@ -15,7 +16,7 @@ from gi.repository import Keybinder
 from gi.repository import Notify
 
 # pulsectl 20.5.1
-from pulsectl import Pulse
+from pulsectl import Pulse, PulseDisconnected
 
 
 # relative units
@@ -157,7 +158,12 @@ class PulseMixer(object):
         self.pulse_d.event_callback_set(
             lambda e: GLib.idle_add(self.callback)
         )
-        self.pulse_d.event_listen()
+        try:
+            self.pulse_d.event_listen()
+        except PulseDisconnected:
+            time.sleep(3)
+            self.pulse = Pulse('volume-control')
+            self.async_listener()
 
 
 # GUI
