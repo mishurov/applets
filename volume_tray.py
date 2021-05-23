@@ -1,6 +1,7 @@
 import time
 import subprocess
 import threading
+import dbus  # python3-dbus
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -62,6 +63,10 @@ PROFILE_MAP = {
 }
 
 PROF_ATTRS = list(PROFILE_MAP.values())
+
+bus = dbus.SystemBus()
+dev_obj = bus.get_object('org.bluez', '/')
+dev_interface = dbus.Interface(dev_obj, 'org.freedesktop.DBus.ObjectManager')
 
 
 # Mixer
@@ -295,6 +300,21 @@ class SoundIcon(object):
         self.icon.connect('popup-menu', self.popup_menu)
         self.icon.connect('scroll-event', self.on_scroll)
 
+    def get_batt_levels(self):
+        objects = dev_interface.GetManagedObjects()
+        ret = {}
+        for path, interfaces in objects.items():
+            if "org.bluez.Battery1" in interfaces:
+                dev = interfaces['org.bluez.Device1']
+                if not dev['Paired']:
+                    continue
+                name = dev['Name']
+                batt = interfaces['org.bluez.Battery1']
+                perc_bytes = bytes([batt['Percentage']])
+                perc_int = int.from_bytes(perc_bytes, 'little')
+                ret[name] = ' ' + str(perc_int) + '%'
+        return ret
+
     def update_menu(self):
         self.mixer.introspect()
 
@@ -302,17 +322,27 @@ class SoundIcon(object):
             m.destroy()
         self.profile_items = []
 
+        batt_levels = self.get_batt_levels()
+        shown = []
+
+        pos = 3
+
         for k, v in self.mixer.all_profiles.items():
             dev, prof = k.split('__')
-            label = prof + ' (' + dev + ')'
+            lvls = list(batt_levels.keys())
+            perc = batt_levels[dev] if dev in lvls and dev not in shown else ''
+            label = prof + ' (' + dev + ')' + perc
             item = Gtk.MenuItem(label=label)
             item.connect(
                 'activate',
                 lambda s, m: self.mixer.set_profile(m),
                 k
             )
-            self.menu.insert(item, 3)
+            self.menu.insert(item, pos)
+            pos += 1
             self.profile_items.append(item)
+            if perc:
+                shown.append(dev)
             item.set_visible(True)
             if k == self.mixer.current_profile:
                 item.set_sensitive(False)
