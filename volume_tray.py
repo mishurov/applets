@@ -57,9 +57,9 @@ PROFILE_MAP = {
     PROFILE_A2DP_XQ: "A2DP SBC XQ",
     PROFILE_A2DP_AAC: "A2DP AAC",
     PROFILE_A2DP_APTX: "A2DP AptX",
-    PROFILE_HSP: "HSP",
-    PROFILE_HSP_CVSD: "HSP CVSD",
-    PROFILE_HSP_MSBC: "HSP mSBC"
+    PROFILE_HSP: "HFP CVSD",
+    PROFILE_HSP_CVSD: "HFP CVSD",
+    PROFILE_HSP_MSBC: "HFP mSBC"
 }
 
 PROF_ATTRS = list(PROFILE_MAP.values())
@@ -255,7 +255,22 @@ class SoundIcon(object):
         self.create_menu()
         self.update_icon()
         self.init_keys()
+        self.create_styles()
         self.run()
+
+    def create_styles(self):
+        css = (
+            '.strong > * { font-weight: bold; }'
+            '.subtitle > *:disabled { font-weight: bold; font-size: small; }'
+            '.submenu { padding-left: 12px; }'
+        )
+        style_provider = Gtk.CssProvider()
+        style_provider.load_from_data(css.encode('utf-8'))
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            style_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
 
     def change_vol_notify(self, key):
         if key == 'XF86AudioMute':
@@ -312,7 +327,7 @@ class SoundIcon(object):
                 batt = interfaces['org.bluez.Battery1']
                 perc_bytes = bytes([batt['Percentage']])
                 perc_int = int.from_bytes(perc_bytes, 'little')
-                ret[name] = ' ' + str(perc_int) + '%'
+                ret[name] = ' ∙ ' + str(perc_int) + '%'
         return ret
 
     def update_menu(self):
@@ -322,30 +337,52 @@ class SoundIcon(object):
             m.destroy()
         self.profile_items = []
 
-        batt_levels = self.get_batt_levels()
-        shown = []
-
-        pos = 3
-
+        devices = {}
         for k, v in self.mixer.all_profiles.items():
             dev, prof = k.split('__')
-            lvls = list(batt_levels.keys())
-            perc = batt_levels[dev] if dev in lvls and dev not in shown else ''
-            label = prof + ' (' + dev + ')' + perc
+            key = dev.replace(' ', '_')
+            device = devices.get(key)
+            if not device:
+                devices[key] = {
+                    'name': dev,
+                    'profiles': [prof],
+                    'links': [k]
+                }
+            else:
+                device['profiles'].append(prof)
+                device['links'].append(k)
+
+        pos = 3
+        batt_levels = self.get_batt_levels()
+
+        for device in devices.values():
+            name = device['name']
+            perc = batt_levels.get(name, '')
+            label = name + perc
             item = Gtk.MenuItem(label=label)
-            item.connect(
-                'activate',
-                lambda s, m: self.mixer.set_profile(m),
-                k
-            )
+            style_context = item.get_style_context()
+            style_context.add_class('subtitle')
             self.menu.insert(item, pos)
             pos += 1
-            self.profile_items.append(item)
-            if perc:
-                shown.append(dev)
+            item.set_sensitive(False)
             item.set_visible(True)
-            if k == self.mixer.current_profile:
-                item.set_sensitive(False)
+            self.profile_items.append(item)
+            for i, profile in enumerate(device['profiles']):
+                link = device['links'][i]
+                item = Gtk.MenuItem(label=profile)
+                style_context = item.get_style_context()
+                style_context.add_class('submenu')
+                item.connect(
+                    'activate',
+                    lambda s, m: self.mixer.set_profile(m),
+                    link
+                )
+                self.menu.insert(item, pos)
+                pos += 1
+                item.set_visible(True)
+                if link == self.mixer.current_profile:
+                    item.set_sensitive(False)
+                self.profile_items.append(item)
 
     def update_icon(self):
         if not self.menu.get_visible():
@@ -384,6 +421,9 @@ class SoundIcon(object):
         self.slider_item.connect('value-changed', self.on_value_changed)
         mixer_item = self.create_mixer()
         exit_item = self.create_exit()
+        for item in [mixer_item, exit_item]:
+            style_context = item.get_style_context()
+            style_context.add_class('strong')
         self.menu.append(self.slider_item)
         self.menu.append(mixer_item)
         self.menu.append(Gtk.SeparatorMenuItem())
