@@ -64,10 +64,6 @@ PROFILE_MAP = {
 
 PROF_ATTRS = list(PROFILE_MAP.values())
 
-bus = dbus.SystemBus()
-dev_obj = bus.get_object('org.bluez', '/')
-dev_interface = dbus.Interface(dev_obj, 'org.freedesktop.DBus.ObjectManager')
-
 
 # Mixer
 class PulseMixer(object):
@@ -250,6 +246,7 @@ class SoundIcon(object):
 
     def __init__(self):
         self.mixer = PulseMixer()
+        self.init_dbus()
         self.create_icon()
         self.mixer.start_listener(self.update_icon)
         self.create_menu()
@@ -315,8 +312,20 @@ class SoundIcon(object):
         self.icon.connect('popup-menu', self.popup_menu)
         self.icon.connect('scroll-event', self.on_scroll)
 
+    def init_dbus(self):
+        bus = dbus.SystemBus()
+        dev_obj = bus.get_object('org.bluez', '/')
+        self.dev_interface = dbus.Interface(
+            dev_obj,
+            'org.freedesktop.DBus.ObjectManager')
+
     def get_batt_levels(self):
-        objects = dev_interface.GetManagedObjects()
+        try:
+            objects = self.dev_interface.GetManagedObjects()
+        except dbus.exceptions.DBusException:
+            self.init_dbus()
+            objects = self.dev_interface.GetManagedObjects()
+
         ret = {}
         for path, interfaces in objects.items():
             if "org.bluez.Battery1" in interfaces:
