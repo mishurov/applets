@@ -1,0 +1,455 @@
+diff --git a/i3bar/include/workspaces.h b/i3bar/include/workspaces.h
+index ff61450c..19298514 100644
+--- a/i3bar/include/workspaces.h
++++ b/i3bar/include/workspaces.h
+@@ -35,8 +35,11 @@ struct i3_ws {
+     char *canonical_name;     /* The true name of the ws according to the ipc */
+     i3String *name;           /* The name of the ws that is displayed on the bar */
+     int name_width;           /* The rendered width of the name */
++    i3String *name_z;         /* The name of the zoomed ws that is displayed on the bar */
++    int name_z_width;         /* The rendered width of the zoomed name */
+     bool visible;             /* If the ws is currently visible on an output */
+     bool focused;             /* If the ws is currently focused */
++    bool zoomed;              /* If the ws is currently zoomed */
+     bool urgent;              /* If the urgent hint of the ws is set */
+     rect rect;                /* The rect of the ws (not used (yet)) */
+     struct i3_output *output; /* The current output of the ws */
+diff --git a/i3bar/src/workspaces.c b/i3bar/src/workspaces.c
+index bd56f5d0..2aa3fcd6 100644
+--- a/i3bar/src/workspaces.c
++++ b/i3bar/src/workspaces.c
+@@ -14,6 +14,8 @@
+ 
+ #include <yajl/yajl_parse.h>
+ 
++#define ZOOM_INDICATOR "*Z"
++
+ /* A datatype to pass through the callbacks to save the state */
+ struct workspaces_json_params {
+     struct ws_head *workspaces;
+@@ -47,6 +49,12 @@ static int workspaces_boolean_cb(void *params_, int val) {
+         return 1;
+     }
+ 
++    if (!strcmp(params->cur_key, "zoomed")) {
++        params->workspaces_walk->zoomed = val;
++        FREE(params->cur_key);
++        return 1;
++    }
++
+     FREE(params->cur_key);
+ 
+     return 0;
+@@ -140,6 +148,15 @@ static int workspaces_string_cb(void *params_, const unsigned char *val, size_t
+         params->workspaces_walk->name_width =
+             predict_text_width(params->workspaces_walk->name);
+ 
++        /* Save zoomed name and width */
++        const char* name_utf8 = i3string_as_utf8(params->workspaces_walk->name);
++        char name_z_utf8[sizeof(name_utf8) + sizeof(ZOOM_INDICATOR)];
++        strcpy(name_z_utf8, name_utf8);
++        strcat(name_z_utf8, ZOOM_INDICATOR);
++        params->workspaces_walk->name_z = i3string_from_utf8(name_z_utf8);
++        i3string_set_markup(params->workspaces_walk->name_z, i3string_is_markup(params->workspaces_walk->name));
++        params->workspaces_walk->name_z_width = predict_text_width(params->workspaces_walk->name_z);
++
+         DLOG("Got workspace canonical: %s, name: '%s', name_width: %d, glyphs: %zu\n",
+              params->workspaces_walk->canonical_name,
+              i3string_as_utf8(params->workspaces_walk->name),
+@@ -184,8 +201,10 @@ static int workspaces_start_map_cb(void *params_) {
+         new_workspace = smalloc(sizeof(i3_ws));
+         new_workspace->num = -1;
+         new_workspace->name = NULL;
++        new_workspace->name_z = NULL;
+         new_workspace->visible = 0;
+         new_workspace->focused = 0;
++        new_workspace->zoomed = 0;
+         new_workspace->urgent = 0;
+         memset(&new_workspace->rect, 0, sizeof(rect));
+         new_workspace->output = NULL;
+@@ -271,6 +290,7 @@ void free_workspaces(void) {
+         if (outputs_walk->workspaces != NULL && !TAILQ_EMPTY(outputs_walk->workspaces)) {
+             TAILQ_FOREACH (ws_walk, outputs_walk->workspaces, tailq) {
+                 I3STRING_FREE(ws_walk->name);
++                I3STRING_FREE(ws_walk->name_z);
+                 FREE(ws_walk->canonical_name);
+             }
+             FREE_TAILQ(outputs_walk->workspaces, i3_ws);
+diff --git a/i3bar/src/xcb.c b/i3bar/src/xcb.c
+index ab59209d..7669dc21 100644
+--- a/i3bar/src/xcb.c
++++ b/i3bar/src/xcb.c
+@@ -531,7 +531,8 @@ static void handle_button(xcb_button_press_event_t *event) {
+     i3_ws *cur_ws = NULL, *clicked_ws = NULL, *ws_walk;
+ 
+     TAILQ_FOREACH (ws_walk, walk->workspaces, tailq) {
+-        int w = predict_button_width(ws_walk->name_width);
++        int name_width = ws_walk->zoomed ? ws_walk->name_z_width : ws_walk->name_width;
++        int w = predict_button_width(name_width);
+         if (x >= workspace_width && x <= workspace_width + w)
+             clicked_ws = ws_walk;
+         if (ws_walk->visible)
+@@ -2017,9 +2018,14 @@ void draw_bars(bool unhide) {
+ 
+         if (!config.disable_ws) {
+             i3_ws *ws_walk;
++            i3String *name;
++            int name_width;
++
+             TAILQ_FOREACH (ws_walk, outputs_walk->workspaces, tailq) {
++                name = ws_walk->zoomed ? ws_walk->name_z : ws_walk->name;
++                name_width = ws_walk->zoomed ? ws_walk->name_z_width : ws_walk->name_width;
+                 DLOG("Drawing button for WS %s at x = %d, len = %d\n",
+-                     i3string_as_utf8(ws_walk->name), workspace_width, ws_walk->name_width);
++                     i3string_as_utf8(name), workspace_width, name_width);
+                 color_t fg_color = colors.inactive_ws_fg;
+                 color_t bg_color = colors.inactive_ws_bg;
+                 color_t border_color = colors.inactive_ws_border;
+@@ -2035,16 +2041,17 @@ void draw_bars(bool unhide) {
+                     }
+                 }
+                 if (ws_walk->urgent) {
+-                    DLOG("WS %s is urgent!\n", i3string_as_utf8(ws_walk->name));
++                    DLOG("WS %s is urgent!\n", i3string_as_utf8(name));
+                     fg_color = colors.urgent_ws_fg;
+                     bg_color = colors.urgent_ws_bg;
+                     border_color = colors.urgent_ws_border;
+                     unhide = true;
+                 }
+ 
+-                int w = predict_button_width(ws_walk->name_width);
++                int w = predict_button_width(name_width);
++
+                 draw_button(&(outputs_walk->buffer), fg_color, bg_color, border_color,
+-                            workspace_width, w, ws_walk->name_width, ws_walk->name);
++                            workspace_width, w, name_width, name);
+ 
+                 workspace_width += w;
+                 if (TAILQ_NEXT(ws_walk, tailq) != NULL)
+diff --git a/include/commands.h b/include/commands.h
+index 7a1877a1..ce0aa445 100644
+--- a/include/commands.h
++++ b/include/commands.h
+@@ -212,6 +212,12 @@ void cmd_focus(I3_CMD);
+  */
+ void cmd_fullscreen(I3_CMD, const char *action, const char *fullscreen_mode);
+ 
++/**
++ * Implementation of 'zoom enable|disable|toggle'.
++ *
++ */
++void cmd_zoom(I3_CMD, const char *action);
++
+ /**
+  * Implementation of 'sticky enable|disable|toggle'.
+  *
+diff --git a/include/con.h b/include/con.h
+index d8330098..be3bb8b0 100644
+--- a/include/con.h
++++ b/include/con.h
+@@ -128,6 +128,12 @@ Con *con_parent_with_orientation(Con *con, orientation_t orientation);
+  */
+ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode);
+ 
++/**
++ * Returns the first zoom node below this node.
++ *
++ */
++Con *con_get_zoom_con(Con *con);
++
+ /**
+  * Returns the fullscreen node that covers the given workspace if it exists.
+  * This is either a CF_GLOBAL fullscreen container anywhere or a CF_OUTPUT
+@@ -324,6 +330,25 @@ void con_enable_fullscreen(Con *con, fullscreen_mode_t fullscreen_mode);
+  */
+ void con_disable_fullscreen(Con *con);
+ 
++/**
++ * Toggles zoom mode for the given container. Zoom mode will not be
++ * entered when there already is a zoom container on this workspace.
++ *
++ */
++void con_toggle_zoom(Con *con);
++
++/**
++ * Enables zoom mode for the given container, if necessary.
++ *
++ */
++void con_enable_zoom(Con *con);
++
++/**
++ * Disables zoom mode for the given container, if necessary.
++ *
++ */
++void con_disable_zoom(Con *con);
++
+ /**
+  * Moves the given container to the currently focused container on the given
+  * workspace.
+diff --git a/include/data.h b/include/data.h
+index e411129f..6c50bbe0 100644
+--- a/include/data.h
++++ b/include/data.h
+@@ -686,6 +686,9 @@ struct Con {
+ 
+     fullscreen_mode_t fullscreen_mode;
+ 
++    /* Zoom state */
++    bool zoomed;
++
+     /* Whether this window should stick to the glass. This corresponds to
+      * the _NET_WM_STATE_STICKY atom and will only be respected if the
+      * window is floating. */
+diff --git a/parser-specs/commands.spec b/parser-specs/commands.spec
+index 4db81680..e10fe323 100644
+--- a/parser-specs/commands.spec
++++ b/parser-specs/commands.spec
+@@ -29,6 +29,7 @@ state INITIAL:
+   'kill' -> KILL
+   'open' -> call cmd_open()
+   'fullscreen' -> FULLSCREEN
++  'zoom' -> ZOOM
+   'sticky' -> STICKY
+   'split' -> SPLIT
+   'floating' -> FLOATING
+@@ -197,6 +198,11 @@ state FULLSCREEN_COMPAT:
+   end
+       -> call cmd_fullscreen("toggle", "output")
+ 
++# zoom enable|disable|toggle
++state ZOOM:
++  action = 'enable', 'disable', 'toggle'
++      -> call cmd_zoom($action)
++
+ # sticky enable|disable|toggle
+ state STICKY:
+   action = 'enable', 'disable', 'toggle'
+diff --git a/src/commands.c b/src/commands.c
+index 8e8aece9..8154a8ef 100644
+--- a/src/commands.c
++++ b/src/commands.c
+@@ -1451,6 +1451,31 @@ void cmd_fullscreen(I3_CMD, const char *action, const char *fullscreen_mode) {
+     ysuccess(true);
+ }
+ 
++/*
++* Implementation of 'zoom enable|disable|toggle'
++*
++*/
++void cmd_zoom(I3_CMD, const char *action) {
++    DLOG("%s zoom", action);
++    owindow *current;
++
++    HANDLE_EMPTY_MATCH;
++
++    TAILQ_FOREACH(current, &owindows, owindows) {
++        DLOG("matching: %p / %s\n", current->con, current->con->name);
++        if (strcmp(action, "toggle") == 0) {
++            con_toggle_zoom(current->con);
++        } else if (strcmp(action, "enable") == 0) {
++            con_enable_zoom(current->con);
++        } else if (strcmp(action, "disable") == 0) {
++            con_disable_zoom(current->con);
++        }
++    }
++
++    cmd_output->needs_tree_render = true;
++    ysuccess(true);
++}
++
+ /*
+  * Implementation of 'sticky enable|disable|toggle'.
+  *
+diff --git a/src/con.c b/src/con.c
+index 1f0dbed3..e98d0180 100644
+--- a/src/con.c
++++ b/src/con.c
+@@ -235,6 +235,7 @@ void con_detach(Con *con) {
+         TAILQ_REMOVE(&(con->parent->nodes_head), con, nodes);
+         TAILQ_REMOVE(&(con->parent->focus_head), con, focused);
+     }
++    con_disable_zoom(con);
+ }
+ 
+ /*
+@@ -563,6 +564,50 @@ Con *con_get_fullscreen_con(Con *con, fullscreen_mode_t fullscreen_mode) {
+     return NULL;
+ }
+ 
++/*
++ * Returns the first zoom node below this node.
++ *
++ */
++Con *con_get_zoom_con(Con *con) {
++    Con *current, *child;
++
++    TAILQ_HEAD(bfs_head, bfs_entry) bfs_head = TAILQ_HEAD_INITIALIZER(bfs_head);
++    struct bfs_entry *entry = smalloc(sizeof(struct bfs_entry));
++    entry->con = con;
++    TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++
++    while (!TAILQ_EMPTY(&bfs_head)) {
++        entry = TAILQ_FIRST(&bfs_head);
++        current = entry->con;
++        if (current != con && current->zoomed == true) {
++            /* empty the queue */
++            while (!TAILQ_EMPTY(&bfs_head)) {
++                entry = TAILQ_FIRST(&bfs_head);
++                TAILQ_REMOVE(&bfs_head, entry, entries);
++                free(entry);
++            }
++            return current;
++        }
++
++        TAILQ_REMOVE(&bfs_head, entry, entries);
++        free(entry);
++
++        TAILQ_FOREACH(child, &(current->nodes_head), nodes) {
++            entry = smalloc(sizeof(struct bfs_entry));
++            entry->con = child;
++            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++        }
++
++        TAILQ_FOREACH(child, &(current->floating_head), floating_windows) {
++            entry = smalloc(sizeof(struct bfs_entry));
++            entry->con = child;
++            TAILQ_INSERT_TAIL(&bfs_head, entry, entries);
++        }
++    }
++
++    return NULL;
++}
++
+ /*
+  * Returns the fullscreen node that covers the given workspace if it exists.
+  * This is either a CF_GLOBAL fullscreen container anywhere or a CF_OUTPUT
+@@ -1171,6 +1216,69 @@ void con_disable_fullscreen(Con *con) {
+     con_set_fullscreen_mode(con, CF_NONE);
+ }
+ 
++/* Zoom */
++
++void con_toggle_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE) {
++        DLOG("You cannot make a workspace fullscreen.\n");
++        return;
++    }
++
++    DLOG("toggling zoom for %p / %s\n", con, con->name);
++
++    if (con->zoomed == false)
++        con_enable_zoom(con);
++    else
++        con_disable_zoom(con);
++}
++
++void con_enable_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE || con_is_floating(con)) {
++        DLOG("You cannot make a workspace or floating container zoom.\n");
++        return;
++    }
++
++    DLOG("enable zoom for %p / %s\n", con, con->name);
++
++    if (con->zoomed == true) {
++        DLOG("zoom already enabled for %p / %s\n", con, con->name);
++        return;
++    }
++
++    Con *ws = con_get_workspace(con);
++
++    /* Disable any zoom container that would conflict the new one. */
++    if (ws->zoomed) {
++        Con *zoom = con_get_zoom_con(ws);
++        con_disable_zoom(zoom);
++    } else {
++        ws->zoomed = true;
++        ipc_send_workspace_event("zoomed", ws, NULL);
++    }
++
++    con->zoomed = true;
++    ipc_send_window_event("zoomed", con);
++}
++
++void con_disable_zoom(Con *con) {
++    if (con->type == CT_WORKSPACE) {
++        DLOG("You cannot make a workspace zoom.\n");
++        return;
++    }
++
++    DLOG("disabling fullscreen for %p / %s\n", con, con->name);
++
++    if (con->zoomed == false) {
++        DLOG("zoom already disabled for %p / %s\n", con, con->name);
++        return;
++    }
++    con->zoomed = false;
++    ipc_send_window_event("zoomed", con);
++    Con *ws = con_get_workspace(con);
++    ws->zoomed = false;
++    ipc_send_workspace_event("zoomed", ws, NULL);
++}
++
+ static bool _con_move_to_con(Con *con, Con *target, bool behind_focused, bool fix_coordinates, bool dont_warp, bool ignore_focus, bool fix_percentage) {
+     Con *orig_target = target;
+ 
+diff --git a/src/ipc.c b/src/ipc.c
+index 1711c526..eb28c0d0 100644
+--- a/src/ipc.c
++++ b/src/ipc.c
+@@ -411,6 +411,9 @@ void dump_node(yajl_gen gen, struct Con *con, bool inplace_restart) {
+     ystr("urgent");
+     y(bool, con->urgent);
+ 
++    ystr("zoomed");
++    y(bool, con->zoomed);
++
+     ystr("marks");
+     y(array_open);
+     mark_t *mark;
+@@ -615,6 +618,9 @@ void dump_node(yajl_gen gen, struct Con *con, bool inplace_restart) {
+     ystr("fullscreen_mode");
+     y(integer, con->fullscreen_mode);
+ 
++    ystr("zoomed");
++    y(bool, con->zoomed);
++
+     ystr("sticky");
+     y(bool, con->sticky);
+ 
+@@ -936,6 +942,9 @@ IPC_HANDLER(get_workspaces) {
+             ystr("urgent");
+             y(bool, ws->urgent);
+ 
++            ystr("zoomed");
++            y(bool, ws->zoomed);
++
+             y(map_close);
+         }
+     }
+diff --git a/src/render.c b/src/render.c
+index cf4fd45f..a17214e6 100644
+--- a/src/render.c
++++ b/src/render.c
+@@ -112,6 +112,21 @@ void render_con(Con *con) {
+         render_root(con, fullscreen);
+     } else {
+         Con *child;
++
++        /* check zoom nodes */
++        Con *zoom = NULL;
++        if (con->type != CT_OUTPUT && params.children > 0) {
++            zoom = con_get_zoom_con(con);
++        }
++
++        if (zoom) {
++            zoom->rect = params.rect;
++            x_raise_con(zoom);
++            render_con(zoom);
++            return;
++        }
++
++
+         TAILQ_FOREACH (child, &(con->nodes_head), nodes) {
+             assert(params.children > 0);
+ 
