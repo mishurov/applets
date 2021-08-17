@@ -9,6 +9,7 @@ gi.require_version('Gdk', '3.0')
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 
+SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
 
 ICON_SIZE = 24
 ICON_NAME = 'alarm-clock'
@@ -121,9 +122,12 @@ class Reminder(object):
     def setup_icon(self):
         self.icon = Gtk.StatusIcon()
         icon_theme = Gtk.IconTheme.get_default()
-        self.gicon = icon_theme.load_icon(ICON_NAME, ICON_SIZE, 0)
-        self.gicon_urgent = icon_theme.load_icon(ICON_NAME_URGENT, ICON_SIZE, 0)
-        self.gicon_active = icon_theme.load_icon(ICON_NAME_ACTIVE, ICON_SIZE, 0)
+        self.gicon = icon_theme.load_icon_for_scale(
+            ICON_NAME, ICON_SIZE, SCALE_FACTOR, 0)
+        self.gicon_urgent = icon_theme.load_icon_for_scale(
+            ICON_NAME_URGENT, ICON_SIZE, SCALE_FACTOR, 0)
+        self.gicon_active = icon_theme.load_icon_for_scale(
+            ICON_NAME_ACTIVE, ICON_SIZE, SCALE_FACTOR, 0)
         self.icon.set_property("gicon", self.gicon)
         self.icon.connect('activate', self.activate_menu)
 

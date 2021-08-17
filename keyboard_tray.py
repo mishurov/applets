@@ -20,12 +20,13 @@ ICON_SIZE = 0.29
 X_OFFSET = 0.01
 Y_OFFSET = 0.19
 
+SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
 DPI = Gdk.Screen.get_default().get_resolution()
 FONT_FACE = "Ubuntu"
-FONT_SIZE = int(FONT_SIZE * DPI)
+FONT_SIZE = int(FONT_SIZE * DPI * SCALE_FACTOR)
 ICON_SIZE = int(ICON_SIZE * DPI)
-X_OFFSET *= DPI
-Y_OFFSET *= DPI
+X_OFFSET *= DPI * SCALE_FACTOR
+Y_OFFSET *= DPI * SCALE_FACTOR
 EXIT_LABEL = "Exit"
 
 XKB_MAJOR_VER = 1
@@ -390,9 +391,10 @@ class KeyboardIcon(object):
         icon_theme = Gtk.IconTheme.get_default()
         langs = []
         for gt in self.xkb_groups:
-           icon_name = "indicator-keyboard-" + gt[:2].capitalize()
-           icon = icon_theme.load_icon(icon_name, ICON_SIZE, 0)
-           langs.append(icon)
+            icon_name = "indicator-keyboard-" + gt[:2].capitalize()
+            icon = icon_theme.load_icon_for_scale(
+                icon_name, ICON_SIZE, SCALE_FACTOR, 0)
+            langs.append(icon)
         self.langs = langs
 
     def _draw_langs_pango(self):
@@ -404,8 +406,9 @@ class KeyboardIcon(object):
         self.langs = langs
 
     def _draw_text(self, text):
+        pix_size = ICON_SIZE * SCALE_FACTOR
         pixbuf = GdkPixbuf.Pixbuf.new(
-            GdkPixbuf.Colorspace.RGB, True, 8, ICON_SIZE, ICON_SIZE
+            GdkPixbuf.Colorspace.RGB, True, 8, pix_size, pix_size
         )
         pixbuf.fill(0xff000000)
         surface = cairo.ImageSurface(

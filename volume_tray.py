@@ -20,6 +20,8 @@ from gi.repository import Notify
 from pulsectl import Pulse, PulseDisconnected
 
 
+SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
+
 # relative units
 VOLUME_WIDTH = 2.1
 VOLUME_HEIGHT = 0.52
@@ -402,7 +404,8 @@ class SoundIcon(object):
         icon_name = self.compute_icon_name(volume, mute)
         if icon_name != self.icon_name:
             self.icon_name = icon_name + '-panel'
-            gicon = self.icon_theme.load_icon(icon_name, ICON_SIZE, 0)
+            gicon = self.icon_theme.load_icon_for_scale(
+                icon_name, ICON_SIZE, SCALE_FACTOR, 0)
             self.icon.set_property("gicon", gicon)
 
     def create_mixer(self):
