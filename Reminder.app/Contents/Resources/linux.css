@@ -1,0 +1,50 @@
+QPushButton#menu {
+  color: #ddd;
+  outline: 0;
+  border-radius: 0;
+  padding: 5px;
+}
+
+QPushButton#menu:hover {
+  color: #eee;
+  background-color: #f0544c;
+}
+
+QPushButton#spin,QPushButton#start {
+  width: 15px;
+  padding: 3px;
+  outline: 0;
+  border-radius: 2px;
+  border: 1px solid #363646;
+  color: #e0e1e3;
+}
+
+QPushButton#spin {
+  background-color: #515151;
+}
+
+QPushButton#start {
+  background-color: #555;
+}
+
+QPushButton#spin:hover,QPushButton#start:hover {
+  background-color: #676767;
+}
+
+QAbstractSpinBox {
+  background-color: #333;
+  border: 1px solid #383838;
+  color: #e0e1e3;
+}
+
+QMenu,QWidget#window,QWidget#popup {
+  background-color: #444;
+}
+
+QMenu,QWidget#popup {
+  border: 0;
+}
+
+QLabel {
+  color: #ddd;
+}

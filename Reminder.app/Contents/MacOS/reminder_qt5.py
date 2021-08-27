@@ -28,40 +28,12 @@ if sys.platform == 'darwin':
 
 CLOCK_FONT_SIZE = 35
 ALERT_FONT_SIZE = 60
-SPINBOX_SPACING_LINUX = 3
-SPINBOX_SPACING_OSX = 0
+SPINBOX_SPACING = 3
 SPINBOX_WINDOW_SPACING = 9
 SPINBOX_WINDOW_TITLE = 'Reminder'
 ALERT_TEXT = 'Alert'
 EXIT_LABEL = 'Exit'
 BUTTON_LABEL = 'Start'
-
-MENU_BUTTON_STYLE_LINUX = (
-'QPushButton{color:palette(midlight);outline:0;border-radius:0;padding:5px;}'
-'QPushButton:hover{color:palette(light);background-color:palette(highlight);}'
-)
-
-MENU_BUTTON_STYLE_OSX = (
-'QPushButton{color:palette(dark);outline:0;'
-'border-radius:5;padding:5px;margin:5px;}'
-)
-
-MENU_BUTTON_HOVERED_STYLE_TEMPLATE_OSX = (
-'QPushButton{{color:palette(text);border-radius:5;'
-'padding:5px;margin:5px;background-color:{}}}'
-)
-
-HILIGHT_COLOR_TEMPLATE_OSX = 'rgba({},{},{},10%)'
-
-SPIN_BUTTON_STYLE_TEMPLATE_OSX = (
-'QPushButton{{width:15px;padding:5px;outline:0;border-radius:4px;}}'
-'QPushButton:hover{{background-color:{};}}'
-)
-
-SPIN_BUTTON_STYLE_LINUX = 'QPushButton{width:10px;padding:3px;outline:0}'
-
-SPINBOX_STYLE_OSX = 'QSpinBox{font-size:15px}'
-SPINBOX_MINSIZE_OSX = 35
 
 HOME = os.environ.get("HOME")
 CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
@@ -69,30 +41,18 @@ REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(FILE_DIR, '..', 'Resources')
+LINUX_CSS = os.path.join(ASSETS_DIR, 'linux.css')
+MACOS_CSS = os.path.join(ASSETS_DIR, 'macos.css')
+APP_STYLESHEET = MACOS_CSS if sys.platform == 'darwin' else LINUX_CSS
 ALARM_PATH = os.path.join(ASSETS_DIR, 'alarm-clock.svg')
 ALARM_ACTIVE_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-active.svg')
 ALARM_URGENT_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-urgent.svg')
-
-SPINBOX_SPACING = (
-    SPINBOX_SPACING_OSX if sys.platform == 'darwin' else SPINBOX_SPACING_LINUX
-)
-
-MENU_BUTTON_STYLE = (
-    MENU_BUTTON_STYLE_OSX if sys.platform == 'darwin' else MENU_BUTTON_STYLE_LINUX
-)
 
 
 def str_to_timedelta(s):
     m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
     kwargs = {key: float(val) for key, val in m.groupdict().items()}
     return timedelta(**kwargs)
-
-
-class HiLightMixin(object):
-    def get_hilight_color(self, obj):
-        color = obj.palette().color(QPalette.Highlight)
-        return HILIGHT_COLOR_TEMPLATE_OSX.format(
-            color.red(), color.green(), color.blue())
 
 
 class ShowCenterMixin(object):
@@ -104,26 +64,29 @@ class ShowCenterMixin(object):
         win.move(win_geo.topLeft())
 
 
-class OsxMenuMixin(HiLightMixin):
-    def set_up_menu_ox(self, menu):
-        menu.hovered.connect(self.on_menu_hovered_osx)
-        color = self.get_hilight_color(menu)
-        self.menu.hovered_style = MENU_BUTTON_HOVERED_STYLE_TEMPLATE_OSX.format(
-            color)
+class OsxMenuMixin(object):
+    def set_up_menu_macos(self, menu):
+        menu.hovered.connect(self.on_menu_hovered_macos)
 
-    def on_menu_hovered_osx(self, action):
+    def update_style(self, obj):
+        obj.style().unpolish(obj)
+        obj.style().polish(obj)
+
+    def on_menu_hovered_macos(self, action):
         for a in self.menu.actions:
             if a == action:
-                a.button.setStyleSheet(self.menu.hovered_style)
+                a.button.setProperty('objectName', 'menuhover')
             else:
-                a.button.setStyleSheet(MENU_BUTTON_STYLE_OSX)
+                a.button.setProperty('objectName', 'menu')
+            self.update_style(a.button)
 
-    def on_menu_activated_osx(self):
+    def on_menu_activated_macos(self):
         for a in self.menu.actions:
-            a.button.setStyleSheet(MENU_BUTTON_STYLE_OSX)
+            a.button.setProperty('objectName', 'menu')
+            self.update_style(a.button)
 
 
-class ButtonSpinBox(QHBoxLayout, HiLightMixin):
+class ButtonSpinBox(QHBoxLayout):
     def __init__(self, *args, **kwargs):
         text = kwargs.pop('label')
         super().__init__(*args, **kwargs)
@@ -133,18 +96,11 @@ class ButtonSpinBox(QHBoxLayout, HiLightMixin):
         self.spin.setButtonSymbols(QSpinBox.NoButtons)
         if sys.platform == 'darwin':
             self.spin.setAttribute(Qt.WA_MacShowFocusRect, 0)
-            self.spin.setMinimumSize(SPINBOX_MINSIZE_OSX, SPINBOX_MINSIZE_OSX)
-            self.spin.setStyleSheet(SPINBOX_STYLE_OSX)
-        if sys.platform == 'darwin':
-            css = SPIN_BUTTON_STYLE_TEMPLATE_OSX.format(
-                self.get_hilight_color(self.spin))
-        else:
-            css = SPIN_BUTTON_STYLE_LINUX
         minus = QPushButton('-')
-        minus.setStyleSheet(css)
+        minus.setProperty('objectName', 'spin')
         minus.clicked.connect(lambda: self.spin.stepBy(-1))
         plus = QPushButton('+')
-        plus.setStyleSheet(css)
+        plus.setProperty('objectName', 'spin')
         plus.clicked.connect(lambda: self.spin.stepBy(1))
         self.setSpacing(SPINBOX_SPACING)
         self.addWidget(label)
@@ -161,6 +117,12 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
+        styleSheet = open(APP_STYLESHEET).read()
+        if sys.platform == 'darwin':
+            c = self.app.palette().color(QPalette.Highlight)
+            color = 'rgba({},{},{},10%)'.format(c.red(), c.green(), c.blue())
+            styleSheet = styleSheet.replace('palette(highlight)', color)
+        self.app.setStyleSheet(styleSheet)
 
         self.setup_icon()
         self.setup_menu()
@@ -203,6 +165,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
 
     def setup_window(self):
         self.window = QWidget()
+        self.window.setProperty('objectName', 'window')
         self.window.setWindowTitle(SPINBOX_WINDOW_TITLE)
         self.window.setWindowFlags(
             self.window.windowFlags() | Qt.WindowStaysOnTopHint | Qt.Dialog)
@@ -218,6 +181,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
             hlayout.addLayout(button_spin)
 
         button = QPushButton(BUTTON_LABEL)
+        button.setProperty('objectName', 'start')
 
         vlayout.addLayout(hlayout)
         vlayout.addWidget(button)
@@ -248,7 +212,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         self.menu = QMenu()
         clock_item = QWidgetAction(self.menu)
         self.clock = QPushButton(' ')
-        self.clock.setStyleSheet(MENU_BUTTON_STYLE)
+        self.clock.setProperty('objectName', 'menu')
         font = self.clock.font()
         font.setPixelSize(CLOCK_FONT_SIZE)
         self.clock.setFont(font)
@@ -257,7 +221,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
 
         exit_item = QWidgetAction(self.menu)
         label = QPushButton(EXIT_LABEL)
-        label.setStyleSheet(MENU_BUTTON_STYLE);
+        label.setProperty('objectName', 'menu')
         exit_item.setDefaultWidget(label)
         label.clicked.connect(self.activate_exit)
 
@@ -268,10 +232,11 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
             clock_item.button = self.clock
             exit_item.button = label
             self.menu.actions = [clock_item, exit_item]
-            self.set_up_menu_ox(self.menu)
+            self.set_up_menu_macos(self.menu)
 
     def setup_popup(self):
         self.popup = QWidget()
+        self.popup.setProperty('objectName', 'popup')
         vlayout = QVBoxLayout(self.popup)
         label = QLabel(ALERT_TEXT)
         font = label.font()
@@ -295,7 +260,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         if reason != QSystemTrayIcon.Trigger:
             return
         if sys.platform == 'darwin':
-            self.on_menu_activated_osx()
+            self.on_menu_activated_macos()
             self.icon.setContextMenu(self.menu)
             self.icon.setContextMenu(None)
         else:
