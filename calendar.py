@@ -1,3 +1,5 @@
+import signal
+
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
@@ -11,6 +13,9 @@ ICON_NAME = 'clipboard'
 ICON_SIZE = 16
 
 
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
 class Calendar(Gtk.Application):
     def __init__(self):
         Gtk.Application.__init__(
@@ -19,15 +24,17 @@ class Calendar(Gtk.Application):
         )
 
     def do_activate(self):
-        window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
+        #window = Gtk.Window.new(Gtk.WindowType.TOPLEVEL)
+        window = Gtk.Window()
         window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
-        window.set_wmclass("py_gi_gtk_calendar", "PythonGIGTKCalendar")
+        window.set_role("PythonGIGTKCalendar")
         window.set_title("GTKCalendar")
         icon_theme = Gtk.IconTheme.get_default()
         if icon_theme.has_icon(ICON_NAME):
             pixbuf = icon_theme.load_icon(ICON_NAME , ICON_SIZE, 0)
             window.set_default_icon(pixbuf)
         cal = Gtk.Calendar()
+        window.connect('destroy-event', lambda x: print('ololo'))
         window.add(cal)
         window.show_all()
         self.add_window(window)

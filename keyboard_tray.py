@@ -378,7 +378,8 @@ class KeyboardIcon(object):
         self.icon.set_property("pixbuf", self.langs[group])
 
     def popup_menu_icon(self, widget, event_button, event_time):
-        self.menu.popup(None, None, None, None, 0, event_time)
+        self.menu.popup(None, None, widget.position_menu,
+            widget, event_button, event_time)
 
     def _init_menu(self):
         self.menu = Gtk.Menu()
@@ -426,7 +427,7 @@ class KeyboardIcon(object):
             cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_BOLD
         )
-        context.set_source_rgba(0.9, 0.9, 0.9, 1)
+        context.set_source_rgba(0.85, 0.85, 0.85, 1)
         context.set_font_size(FONT_SIZE)
         context.move_to(X_OFFSET, Y_OFFSET)
         context.show_text(text)

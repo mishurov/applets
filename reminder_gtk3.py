@@ -181,7 +181,8 @@ class Reminder(object):
             self.icon.set_property("gicon", self.gicon)
         self.update_clock()
         current_time = Gtk.get_current_event_time()
-        self.menu.popup(None, None, None, None, 0, current_time)
+        self.menu.popup(None, None, self.icon.position_menu,
+            self.icon, 0, current_time)
 
     def activate_window(self, *args):
         self.window.show_all()

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import signal
 import subprocess
 import ctypes
@@ -5,9 +7,9 @@ import ctypes.util
 
 # commands to run on right mouse click
 LMB_TOP_CMD = []
-RMB_TOP_CMD = ["sh", "./.config/i3/scripts/smart_fullscreen.sh"]
-RMB_RIGHT_CMD =  ["i3-msg", "workspace", "next"]
-RMB_LEFT_CMD =  ["i3-msg", "workspace", "prev"]
+RMB_TOP_CMD = ['sh', "./.config/i3/scripts/smart_fullscreen.sh"]
+RMB_RIGHT_CMD =  ['i3-msg', "workspace", 'next']
+RMB_LEFT_CMD =  ['i3-msg', "workspace", 'prev']
 
 # width (height) of clickable area
 TOP_THRESHOLD = 0
@@ -213,25 +215,25 @@ class HotCornersApp(object):
         h = self.screen_height
         if y <= TOP_THRESHOLD and x > LEFT_THRESHOLD \
            and x < w - RIGHT_THRESHOLD:
-           return "top"
+           return 'top'
         elif x >= w - RIGHT_THRESHOLD and y > TOP_THRESHOLD:
-           return "right"
+           return 'right'
         elif x <= LEFT_THRESHOLD and y > TOP_THRESHOLD:
-           return "left"
+           return 'left'
         return None
 
     def handle_lbm(self, event):
         area = self.get_area(event.root_x, event.root_y)
-        if RMB_TOP_CMD and area == "top":
+        if RMB_TOP_CMD and area == 'top':
             subprocess.call(LMB_TOP_CMD)
 
     def handle_rbm(self, event):
         area = self.get_area(event.root_x, event.root_y)
-        if RMB_TOP_CMD and area == "top":
+        if RMB_TOP_CMD and area == 'top':
             subprocess.call(RMB_TOP_CMD)
-        elif RMB_RIGHT_CMD and area == "right":
+        elif RMB_RIGHT_CMD and area == 'right':
             subprocess.call(RMB_RIGHT_CMD)
-        elif RMB_LEFT_CMD and area == "left":
+        elif RMB_LEFT_CMD and area == 'left':
             subprocess.call(RMB_LEFT_CMD)
 
     def event_callback(self, reply, data):
@@ -259,7 +261,7 @@ class HotCornersApp(object):
 
             if reply.contents.client_swapped:
                 self.xcb_record.free(reply)
-                print("Swapped bytes not implemented")
+                print('Swapped bytes not implemented')
                 self._exit()
 
             if reply.contents.category == XRecordFromServer:
@@ -282,7 +284,7 @@ class HotCornersApp(object):
         cookie = self.xcb.xcb_query_extension(
             self.conn,
             ctypes.c_ushort(6),
-            ctypes.c_char_p(b"RECORD")
+            ctypes.c_char_p(b'RECORD')
         )
         self.xcb.xcb_query_extension_reply.restype = ctypes.POINTER(
             xcb_query_extension_reply_t
@@ -293,7 +295,7 @@ class HotCornersApp(object):
         present = reply.contents.present
         self.xcb.free(reply)
         if not present:
-            print("No RECORD extension")
+            print('No RECORD extension')
             self._exit()
         xcb_record_location = ctypes.util.find_library('xcb-record')
         self.xcb_record = ctypes.CDLL(xcb_record_location)
@@ -329,7 +331,7 @@ class HotCornersApp(object):
         err = self.xcb.xcb_request_check(self.conn, cookie)
         if err:
             self.xcb_xkb.free(err)
-            print("Cant initialize event handler")
+            print('Cant initialize event handler')
             self._exit()
 
         self.record_cookie = self.xcb_record.xcb_record_enable_context(
@@ -345,4 +347,3 @@ class HotCornersApp(object):
 
 if __name__ == '__main__':
     HotCornersApp()
-

@@ -19,7 +19,6 @@ from gi.repository import Notify
 # pulsectl 20.5.1
 from pulsectl import Pulse, PulseDisconnected
 
-
 SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
 
 # relative units
@@ -312,8 +311,7 @@ class SoundIcon(object):
         self.icon_name = ''
         self.icon = Gtk.StatusIcon()
         self.icon_theme = Gtk.IconTheme.get_default()
-        self.icon.connect('activate', self.activate)
-        self.icon.connect('popup-menu', self.popup_menu)
+        self.icon.connect('button-press-event', self.activate)
         self.icon.connect('scroll-event', self.on_scroll)
 
     def init_dbus(self):
@@ -444,18 +442,20 @@ class SoundIcon(object):
         self.menu.append(Gtk.SeparatorMenuItem())
         self.menu.append(exit_item)
         self.menu.show_all()
+        self.temp_items = []
 
-    def activate(self, widget):
+    def activate(self, widget, event):
+        if event.button == 3:
+            self.mixer.toggle_mute()
+            return True
+        if event.button > 1:
+            return True
         self.update_menu()
         volume, mute = self.mixer.get_sink_volume_and_mute()
         self.slider_item.set_value(volume)
         self.slider_item.set_sensitive(not mute)
         current_time = Gtk.get_current_event_time()
-        self.menu.popup(None, None, None, None, 0, current_time)
-        return True
-
-    def popup_menu(self, widget, button, time):
-        self.mixer.toggle_mute()
+        self.menu.popup_at_pointer(event)
         return True
 
     def on_value_changed(self, widget, slider):
