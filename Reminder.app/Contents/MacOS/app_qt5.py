@@ -7,15 +7,23 @@
 import signal
 import os
 import sys
-import re
-import json
-from datetime import datetime, timedelta
-from PyQt5.QtCore import Qt, QTimer, QPoint, QUrl
+from PyQt5.QtCore import Qt, QTimer, QPoint, QUrl, QSize
 from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QVBoxLayout, QHBoxLayout, QPushButton,
-    QDesktopWidget, QWidget, QMenu, QWidgetAction, QSpinBox, QLabel
+    QDesktopWidget, QWidget, QMenu, QWidgetAction, QSpinBox, QLabel,
 )
 from PyQt5.QtGui import QIcon, QFont, QPalette
+
+from core import (
+    TimerMixin,
+    ALERT_TEXT,
+    BUTTON_LABEL,
+    EXIT_LABEL,
+    ICON_NAME,
+    ICON_NAME_URGENT,
+    ICON_NAME_ACTIVE,
+    SPINBOX_WINDOW_TITLE,
+)
 
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -25,34 +33,18 @@ if sys.platform == 'darwin':
     info = AppKit.NSBundle.mainBundle().infoDictionary()
     info["LSUIElement"] = "1"
 
-
 CLOCK_FONT_SIZE = 35
-ALERT_FONT_SIZE = 60
 SPINBOX_SPACING = 3
 SPINBOX_WINDOW_SPACING = 9
-SPINBOX_WINDOW_TITLE = 'Reminder'
-ALERT_TEXT = 'Alert'
-EXIT_LABEL = 'Exit'
-BUTTON_LABEL = 'Start'
-
-HOME = os.environ.get("HOME")
-CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
-REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(FILE_DIR, '..', 'Resources')
 LINUX_CSS = os.path.join(ASSETS_DIR, 'linux.css')
 MACOS_CSS = os.path.join(ASSETS_DIR, 'macos.css')
 APP_STYLESHEET = MACOS_CSS if sys.platform == 'darwin' else LINUX_CSS
-ALARM_PATH = os.path.join(ASSETS_DIR, 'alarm-clock.svg')
-ALARM_ACTIVE_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-active.svg')
-ALARM_URGENT_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-urgent.svg')
-
-
-def str_to_timedelta(s):
-    m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
-    kwargs = {key: float(val) for key, val in m.groupdict().items()}
-    return timedelta(**kwargs)
+ALARM_PATH = os.path.join(ASSETS_DIR, ICON_NAME + '.svg')
+ALARM_URGENT_PATH = os.path.join(ASSETS_DIR, ICON_NAME_URGENT + '.svg')
+ALARM_ACTIVE_PATH = os.path.join(ASSETS_DIR, ICON_NAME_ACTIVE + '.svg')
 
 
 class ShowCenterMixin(object):
@@ -109,14 +101,12 @@ class ButtonSpinBox(QHBoxLayout):
         self.addWidget(plus)
 
 
-class Reminder(ShowCenterMixin, OsxMenuMixin):
-    start = None
-    timedelta = None
-    discount = {'hours': 0, 'minutes': 0, 'seconds': 0}
-
+class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
+        self.app.setApplicationName(SPINBOX_WINDOW_TITLE)
+        self.screen_height = self.app.primaryScreen().geometry().height()
         styleSheet = open(APP_STYLESHEET).read()
         if sys.platform == 'darwin':
             c = self.app.palette().color(QPalette.Highlight)
@@ -132,36 +122,12 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         self.idle()
         self.run()
 
-    def init_saved_alarm(self):
-        if not os.path.isfile(REMINDER_FILE):
-            open(REMINDER_FILE, "w").close()
-        else:
-            with open(REMINDER_FILE, "r") as reminder_file:
-                data = reminder_file.read()
-                if data:
-                    data = json.loads(data)
-                    self.start = datetime.fromisoformat(data['start'])
-                    self.timedelta = str_to_timedelta(data['timedelta'])
-                    self.icon.setIcon(self.qicon_active)
-
-    def save_alarm(self):
-        data = {
-            'start': self.start.isoformat(),
-            'timedelta': str(self.timedelta),
-        }
-        data = json.dumps(data, indent=4)
-        with open(REMINDER_FILE, "w") as reminder_file:
-            reminder_file.write(data)
-
     def on_button_clicked(self, *args):
         self.window.hide()
         h = self.spins[0].value()
         m = self.spins[1].value()
         s = self.spins[2].value()
-        self.timedelta = timedelta(hours=h, minutes=m, seconds=s)
-        self.start = datetime.now()
-        self.save_alarm()
-        self.icon.setIcon(self.qicon_active)
+        self.start_timer(h, m, s)
 
     def setup_window(self):
         self.window = QWidget()
@@ -193,20 +159,11 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         self.window.hide()
 
     def setup_icon(self):
-        self.icon = QSystemTrayIcon(self.app)
-        self.qicon = QIcon(ALARM_PATH)
-        self.qicon_urgent = QIcon(ALARM_URGENT_PATH)
-        self.qicon_active = QIcon(ALARM_ACTIVE_PATH)
-        self.icon.setIcon(self.qicon)
+        self.icon_normal = QIcon(ALARM_PATH)
+        self.icon = QSystemTrayIcon(self.icon_normal)
+        self.icon_urgent = QIcon(ALARM_URGENT_PATH)
+        self.icon_active = QIcon(ALARM_ACTIVE_PATH)
         self.icon.activated.connect(self.activate_menu)
-
-    def update_clock(self):
-        if self.start is not None and self.timedelta is not None:
-            t_time = '{hours:2d}:{minutes:02d}:{seconds:02d}'
-        else:
-            t_time = 'X:YY:ZZ'
-
-        self.clock.setText(t_time.format(**self.discount))
 
     def setup_menu(self):
         self.menu = QMenu()
@@ -239,9 +196,6 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         self.popup.setProperty('objectName', 'popup')
         vlayout = QVBoxLayout(self.popup)
         label = QLabel(ALERT_TEXT)
-        font = label.font()
-        font.setPixelSize(ALERT_FONT_SIZE)
-        label.setFont(font)
         vlayout.addWidget(label)
         self.popup.setWindowFlags(Qt.Sheet | Qt.Popup |
             Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
@@ -252,20 +206,23 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
         self.popup.hide()
 
     def activate_menu(self, reason):
-        if self.icon.icon().cacheKey() == self.qicon_urgent.cacheKey():
-            with open(REMINDER_FILE, "w") as reminder_file:
-                reminder_file.write('')
-            self.icon.setIcon(self.qicon)
-        self.update_clock()
         if reason != QSystemTrayIcon.Trigger:
             return
+        if self.icon.icon().cacheKey() == self.icon_urgent.cacheKey():
+            self.clear_alarm()
+            self.set_icon(self.icon_normal)
+        self.update_clock()
         if sys.platform == 'darwin':
             self.on_menu_activated_macos()
             self.icon.setContextMenu(self.menu)
             self.icon.setContextMenu(None)
+            return
+        icon_pos = self.icon.geometry().bottomRight()
+        width = min(self.menu.geometry().width(), 135)
+        if icon_pos.y() > self.screen_height / 2:
+            pos = icon_pos - QPoint(width, 40)
+            self.menu.popup(pos, self.menu.actions()[-1])
         else:
-            icon_pos = self.icon.geometry().bottomRight()
-            width = min(self.menu.geometry().width(), 135)
             pos = icon_pos - QPoint(width, 0)
             self.menu.popup(pos)
 
@@ -278,27 +235,17 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
     def activate_exit(self, *args):
         os._exit(0)
 
-    def idle(self):
-        if self.start is not None and self.timedelta is not None:
-            td = datetime.now() - self.start
-            if self.timedelta > td:
-                td = self.timedelta - td
-                self.discount.update({
-                    'hours': int(td.seconds / 3600) % 24,
-                    'minutes': int(td.seconds / 60) % 60,
-                    'seconds': td.seconds % 60,
-                })
-            else:
-                self.start = None
-                self.timedelta = None
-                self.discount.update({'hours': 0, 'minutes': 0, 'seconds': 0})
-                self.icon.setIcon(self.qicon_urgent)
-                self.show_center(self.popup)
+    def set_icon(self, icon):
+        self.icon.setIcon(icon)
 
-            if self.menu.isVisible():
-                self.update_clock()
+    def update_clock_text(self, text):
+        self.clock.setText(text)
 
-        return True
+    def show_popup(self):
+        self.show_center(self.popup)
+
+    def is_menu_visible(self):
+        return self.menu.isVisible()
 
     def run(self):
         timer = QTimer()
@@ -310,4 +257,6 @@ class Reminder(ShowCenterMixin, OsxMenuMixin):
 
 
 if __name__ == '__main__':
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     Reminder()

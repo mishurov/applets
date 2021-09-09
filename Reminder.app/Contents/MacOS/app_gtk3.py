@@ -1,41 +1,30 @@
 #!/usr/bin/env python3
 import os
-import re
-import json
-from datetime import datetime, timedelta
 
 import gi
 gi.require_version('Gdk', '3.0')
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib
 
-SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
+from core import (
+    TimerMixin,
+    ALERT_TEXT,
+    BUTTON_LABEL,
+    EXIT_LABEL,
+    ICON_NAME,
+    ICON_NAME_URGENT,
+    ICON_NAME_ACTIVE,
+    SPINBOX_WINDOW_TITLE,
+)
+
 
 ICON_SIZE = 24
-ICON_NAME = 'alarm-clock'
-ICON_NAME_URGENT = 'alarm-clock-urgent'
-ICON_NAME_ACTIVE = 'alarm-clock-active'
-POPUP_TEXT = 'Alarm'
-BUTTON_LABEL = 'Start'
-EXIT_LABEL = 'Quit'
-
-HOME = os.environ.get("HOME")
-CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
-REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
+SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
 
 
-def str_to_timedelta(s):
-    m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
-    kwargs = {key: float(val) for key, val in m.groupdict().items()}
-    return timedelta(**kwargs)
-
-
-class Reminder(object):
-    start = None
-    timedelta = None
-    discount = {'hours': 0, 'minutes': 0, 'seconds': 0}
-
+class Reminder(TimerMixin):
     def __init__(self):
+        Gdk.set_program_class(SPINBOX_WINDOW_TITLE)
         self.setup_icon()
         self.setup_menu()
         self.setup_popup()
@@ -44,42 +33,18 @@ class Reminder(object):
         self.idle()
         self.run()
 
-    def init_saved_alarm(self):
-        if not os.path.isfile(REMINDER_FILE):
-            os.mknod(REMINDER_FILE)
-        else:
-            with open(REMINDER_FILE, "r") as reminder_file:
-                data = reminder_file.read()
-                if data:
-                    data = json.loads(data)
-                    self.start = datetime.fromisoformat(data['start'])
-                    self.timedelta = str_to_timedelta(data['timedelta'])
-                    self.icon.set_property("gicon", self.gicon_active)
-
-    def save_alarm(self):
-        data = {
-            'start': self.start.isoformat(),
-            'timedelta': str(self.timedelta),
-        }
-        data = json.dumps(data, indent=4)
-        with open(REMINDER_FILE, "w") as reminder_file:
-            reminder_file.write(data)
-
     def on_button_clicked(self, *args):
         self.window.hide()
         h = self.spins[0].get_value_as_int()
         m = self.spins[1].get_value_as_int()
         s = self.spins[2].get_value_as_int()
-        self.timedelta = timedelta(hours=h, minutes=m, seconds=s)
-        self.start = datetime.now()
-        self.save_alarm()
-        self.icon.set_property("gicon", self.gicon_active)
+        self.start_timer(h, m, s)
 
     def setup_window(self):
         self.window = Gtk.Window()
         self.window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
         self.window.set_position(Gtk.WindowPosition.CENTER)
-        self.window.set_title("Reminder")
+        self.window.set_title(SPINBOX_WINDOW_TITLE)
 
         vbox = Gtk.Box()
         vbox.set_orientation(Gtk.Orientation.VERTICAL)
@@ -122,23 +87,14 @@ class Reminder(object):
     def setup_icon(self):
         self.icon = Gtk.StatusIcon()
         icon_theme = Gtk.IconTheme.get_default()
-        self.gicon = icon_theme.load_icon_for_scale(
+        self.icon_normal = icon_theme.load_icon_for_scale(
             ICON_NAME, ICON_SIZE, SCALE_FACTOR, 0)
-        self.gicon_urgent = icon_theme.load_icon_for_scale(
+        self.icon_urgent = icon_theme.load_icon_for_scale(
             ICON_NAME_URGENT, ICON_SIZE, SCALE_FACTOR, 0)
-        self.gicon_active = icon_theme.load_icon_for_scale(
+        self.icon_active = icon_theme.load_icon_for_scale(
             ICON_NAME_ACTIVE, ICON_SIZE, SCALE_FACTOR, 0)
-        self.icon.set_property("gicon", self.gicon)
+        self.set_icon(self.icon_normal)
         self.icon.connect('activate', self.activate_menu)
-
-    def update_clock(self):
-        t_span = '<span font="25">{}</span>'
-        if self.start is not None and self.timedelta is not None:
-            t_time = '{hours:2d}:{minutes:02d}:{seconds:02d}'
-        else:
-            t_time = 'X:YY:ZZ'
-
-        self.clock.set_markup(t_span.format(t_time.format(**self.discount)))
 
     def setup_menu(self):
         self.menu = Gtk.Menu()
@@ -167,7 +123,7 @@ class Reminder(object):
         self.popup.set_position(Gtk.WindowPosition.CENTER)
         self.popup.connect('button-release-event', self.on_popup_release)
         label = Gtk.Label()
-        label.set_markup("<span font='50'>%s</span>" % POPUP_TEXT)
+        label.set_markup("<span font='55'>%s</span>" % ALERT_TEXT)
         self.popup.set_border_width(15)
         self.popup.add(label)
 
@@ -175,10 +131,9 @@ class Reminder(object):
         self.popup.hide()
 
     def activate_menu(self, widget):
-        if self.icon.get_property("gicon") == self.gicon_urgent:
-            with open(REMINDER_FILE, "w") as reminder_file:
-                reminder_file.write('')
-            self.icon.set_property("gicon", self.gicon)
+        if self.icon.get_property("gicon") == self.icon_urgent:
+            self.clear_alarm()
+            self.set_icon(self.icon_normal)
         self.update_clock()
         current_time = Gtk.get_current_event_time()
         self.menu.popup(None, None, self.icon.position_menu,
@@ -191,27 +146,18 @@ class Reminder(object):
         self.loop.quit()
         return True
 
-    def idle(self):
-        if self.start is not None and self.timedelta is not None:
-            td = datetime.now() - self.start
-            if self.timedelta > td:
-                td = self.timedelta - td
-                self.discount.update({
-                    'hours': int(td.seconds / 3600) % 24,
-                    'minutes': int(td.seconds / 60) % 60,
-                    'seconds': td.seconds % 60,
-                })
-            else:
-                self.start = None
-                self.timedelta = None
-                self.discount.update({'hours': 0, 'minutes': 0, 'seconds': 0})
-                self.icon.set_property("gicon", self.gicon_urgent)
-                self.popup.show_all()
+    def set_icon(self, icon):
+        self.icon.set_property("gicon", icon)
 
-            if self.menu.get_visible():
-                self.update_clock()
+    def update_clock_text(self, text):
+        t_span = '<span font="25">{}</span>'
+        self.clock.set_markup(t_span.format(text))
 
-        return True
+    def show_popup(self):
+        self.popup.show_all()
+
+    def is_menu_visible(self):
+        return self.menu.get_visible()
 
     def run(self):
         GLib.timeout_add_seconds(1, self.idle)

@@ -1,0 +1,85 @@
+QMenu {
+  background-color: #444;
+}
+
+QLabel {
+  padding: 3px 18px;
+  font-size: 12px;
+  color: #ddd;
+  font-weight: bold;
+}
+
+QLabel:hover {
+  color: #eee;
+}
+
+QLabel:disabled {
+  color: #888;
+}
+
+QLabel#section {
+  font-size: 11px;
+}
+
+QLabel#subaction {
+  padding-left: 25px;
+  font-weight: normal;
+}
+
+QSlider {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 50%);
+}
+
+QLabel:hover, QSlider:hover {
+  background-color: #f0544c;
+}
+
+QSlider::groove:horizontal {
+  height: 2px;
+  border: 1px solid #404040;
+  border-radius: 2px;
+  top: 4px;
+  bottom: 4px;
+}
+
+QSlider::sub-page:horizontal {
+  border: 1px solid #404040;
+  border-radius: 2px;
+  background-color: #f0544c;
+}
+
+QSlider[hovered='true']::sub-page:horizontal {
+  border-color: #e03c34;
+  background-color: #eee;
+}
+
+QSlider::add-page:horizontal {
+  border: 1px solid #404040;
+  border-radius: 2px;
+  background-color: #303030;
+}
+
+QSlider[hovered='true']::add-page:horizontal {
+  border-color: #e84b43;
+  background-color: #d11f17;
+}
+
+QSlider::handle:horizontal {
+  background-color: #555;
+  border: 1px solid #333;
+  height: 14px;
+  width: 13px;
+  margin: -7px -7px;
+  border-radius: 7px;
+}
+
+QSlider[hovered='true']::handle:horizontal {
+  border-color: #f5645d;
+  background-color: #eee;
+}
+
+QSlider[hovered='true']::handle:horizontal:hover {
+  border-color: #d13d36;
+  background-color: #fa645c;
+}

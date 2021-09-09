@@ -1,4 +1,4 @@
-QPushButton#menu {
+QPushButton#menu,QPushButton#menu {
   color: #ddd;
   outline: 0;
   border-radius: 0;
@@ -45,6 +45,10 @@ QMenu,QWidget#window,QWidget#popup {
 
 QMenu,QWidget#popup {
   border: 0;
+}
+
+QWidget#popup > QLabel {
+  font-size: 65px;
 }
 
 QLabel {

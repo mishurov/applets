@@ -1,3 +1,7 @@
+QPushButton {
+  border: 0;
+}
+
 QPushButton#menu {
   color: palette(dark);
   outline: 0;
@@ -31,4 +35,8 @@ QSpinBox {
   width: 40px;
   height: 35px;
   font-size: 16px;
+}
+
+QWidget#popup > QLabel {
+  font-size: 65px;
 }

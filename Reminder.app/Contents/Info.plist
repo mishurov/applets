@@ -5,7 +5,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>Reminder</string>
 	<key>CFBundleExecutable</key>
-	<string>reminder_qt5.py</string>
+	<string>app_qt5.py</string>
 	<key>CFBundleIconFile</key>
 	<string>reminder-app.icns</string>
 	<key>CFBundlePackageType</key>

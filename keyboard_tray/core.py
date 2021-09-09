@@ -3,31 +3,10 @@ import ctypes
 import ctypes.util
 import threading
 
-import cairo
-
-import gi
-gi.require_version('Gtk', '3.0')
-
-from gi.repository import GLib
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
-
-
-FONT_SIZE = 0.2
-ICON_SIZE = 0.29
-
-X_OFFSET = 0.01
-Y_OFFSET = 0.19
-
-SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
-DPI = Gdk.Screen.get_default().get_resolution()
-FONT_FACE = "Ubuntu"
-FONT_SIZE = int(FONT_SIZE * DPI * SCALE_FACTOR)
-ICON_SIZE = int(ICON_SIZE * DPI)
-X_OFFSET *= DPI * SCALE_FACTOR
-Y_OFFSET *= DPI * SCALE_FACTOR
-EXIT_LABEL = "Exit"
+ICON_SIZE = 22
+EXIT_LABEL = 'Exit'
+FONT_FACE = 'Ubuntu'
+FONT_COLOR = (0.85, 0.85, 0.85, 1)
 
 XKB_MAJOR_VER = 1
 XKB_MINOR_VER = 0
@@ -179,24 +158,7 @@ class xcb_generic_event_t(ctypes.Structure):
     ]
 
 
-class KeyboardIcon(object):
-    def __init__(self):
-        self._init_menu()
-        self._init_xcb_xkb()
-        self._init_xkb_groups()
-        #self._draw_langs()
-        self._draw_langs_pango()
-        self.icon = Gtk.StatusIcon()
-        self.icon.connect('activate', self.activate_icon)
-        self.icon.connect('popup-menu', self.popup_menu_icon)
-        self._init_xkb_handler()
-        self.update_icon()
-
-    def _exit(self, *args):
-        self.xcb.xcb_disconnect(self.conn)
-        self.loop.quit()
-        return True
-
+class XKBMixin(object):
     def _init_xcb_xkb(self):
         xcb_location = ctypes.util.find_library('xcb')
         self.xcb = ctypes.CDLL(xcb_location)
@@ -222,7 +184,7 @@ class KeyboardIcon(object):
         present = reply.contents.present
         self.xcb.free(reply)
         if not present:
-            print("No XKEYBOARD extension")
+            print('No XKEYBOARD extension')
             self._exit()
 
         xcb_xkb_location = ctypes.util.find_library('xcb-xkb')
@@ -241,7 +203,7 @@ class KeyboardIcon(object):
         supported = reply.contents.supported
         self.xcb_xkb.free(reply)
         if not supported:
-            print("Extension in not supported by Server")
+            print('Extension in not supported by Server')
             self._exit()
 
     def _init_xkb_handler(self):
@@ -263,7 +225,7 @@ class KeyboardIcon(object):
         err = self.xcb.xcb_request_check(self.conn, cookie)
         if err:
             self.xcb_xkb.free(err)
-            print("Cant initialize event handler")
+            print('Cant initialize event handler')
             self._exit()
 
         self.xcb.xcb_wait_for_event.restype = ctypes.POINTER(
@@ -278,21 +240,44 @@ class KeyboardIcon(object):
         self.thread.daemon = True
         self.thread.start()
 
-    def async_listener(self):
-        while True:
-            e = self.xcb.xcb_wait_for_event(self.conn)
-            if e:
-                self.xcb.free(e)
-                GLib.idle_add(self.update_icon)
-
     def _init_xkb_groups(self):
-        #names = self._get_group_names()
-        #groups = self._parse_group_names(names)
+        names = self._get_group_names()
+        groups = self._parse_group_names(names)
+        self.xkb_groups = groups
+
+    def _init_xkb_groups_simple(self):
         groups = self._get_group_names_simple()
         self.xkb_groups = groups
 
+    def _parse_group_names(self, atom_name):
+        kb_groups = []
+        kbs = re.sub(r'^pc[+_]', '', atom_name.decode("utf-8"))
+        kbs = re.findall(r'[a-z0-9():\-]+(?:_[0-9])?', kbs)
+        kb_groups.append(kbs[0])
+        postfix = r'[_:][0-9]$'
+        for k in kbs:
+            if re.search(postfix, k):
+                kb_groups.append(re.sub(postfix, '', k))
+        if len(kb_groups) > 4:
+            kb_groups = kb_groups[:4]
+        return kb_groups
+
+    def get_xkb_group(self):
+        cookie = self.xcb_xkb.xcb_xkb_get_state(
+            self.conn, use_core_kbd
+        )
+        self.xcb_xkb.xcb_xkb_get_state_reply.restype = ctypes.POINTER(
+            xcb_xkb_get_state_reply_t
+        )
+        reply = self.xcb_xkb.xcb_xkb_get_state_reply(
+            self.conn, cookie, None
+        )
+        group = reply.contents.group
+        self.xcb_xkb.free(reply)
+        return group
+
     def _get_group_names_simple(self):
-        return ["en", "ru"]
+        return ['en', 'ru']
 
     def _get_group_names(self):
         XCB_XKB_NAME_DETAIL_SYMBOLS = 4
@@ -329,37 +314,6 @@ class KeyboardIcon(object):
         self.xcb.free(reply)
         return atom_name
 
-    def _parse_group_names(self, atom_name):
-        kb_groups = []
-        kbs = re.sub(r'^pc[+_]', '', atom_name.decode("utf-8"))
-        kbs = re.findall(r'[a-z0-9():\-]+(?:_[0-9])?', kbs)
-        kb_groups.append(kbs[0])
-        postfix = r'[_:][0-9]$'
-        for k in kbs:
-            if re.search(postfix, k):
-                kb_groups.append(re.sub(postfix, '', k))
-        if len(kb_groups) > 4:
-            kb_groups = kb_groups[:4]
-        return kb_groups
-
-    def get_xkb_group(self):
-        cookie = self.xcb_xkb.xcb_xkb_get_state(
-            self.conn, use_core_kbd
-        )
-        self.xcb_xkb.xcb_xkb_get_state_reply.restype = ctypes.POINTER(
-            xcb_xkb_get_state_reply_t
-        )
-        reply = self.xcb_xkb.xcb_xkb_get_state_reply(
-            self.conn, cookie, None
-        )
-        group = reply.contents.group
-        self.xcb_xkb.free(reply)
-        return group
-
-    def activate_icon(self, widget):
-        self.set_next_group()
-        self.update_icon()
-
     def set_next_group(self):
         group = self.get_xkb_group()
         groups_len = len(self.xkb_groups)
@@ -373,32 +327,7 @@ class KeyboardIcon(object):
             self.conn, use_core_kbd, 0, 0, True, group, 0, 0, 0
         )
 
-    def update_icon(self):
-        group = self.get_xkb_group()
-        self.icon.set_property("pixbuf", self.langs[group])
-
-    def popup_menu_icon(self, widget, event_button, event_time):
-        self.menu.popup(None, None, widget.position_menu,
-            widget, event_button, event_time)
-
-    def _init_menu(self):
-        self.menu = Gtk.Menu()
-        close_item = Gtk.MenuItem(label=EXIT_LABEL)
-        close_item.connect("activate", self._exit)
-        self.menu.append(close_item)
-        self.menu.show_all()
-
-    def _draw_langs(self):
-        icon_theme = Gtk.IconTheme.get_default()
-        langs = []
-        for gt in self.xkb_groups:
-            icon_name = "indicator-keyboard-" + gt[:2].capitalize()
-            icon = icon_theme.load_icon_for_scale(
-                icon_name, ICON_SIZE, SCALE_FACTOR, 0)
-            langs.append(icon)
-        self.langs = langs
-
-    def _draw_langs_pango(self):
+    def _draw_langs_renderer(self):
         langs = []
         for gt in self.xkb_groups:
             langs.append(
@@ -406,46 +335,10 @@ class KeyboardIcon(object):
             )
         self.langs = langs
 
-    def _draw_text(self, text):
-        pix_size = ICON_SIZE * SCALE_FACTOR
-        pixbuf = GdkPixbuf.Pixbuf.new(
-            GdkPixbuf.Colorspace.RGB, True, 8, pix_size, pix_size
-        )
-        pixbuf.fill(0xff000000)
-        surface = cairo.ImageSurface(
-            cairo.FORMAT_RGB24,
-            pixbuf.get_width(),
-            pixbuf.get_height()
-        )
-        surface.flush()
-        context = cairo.Context(surface)
-        Gdk.cairo_set_source_pixbuf(context, pixbuf, 0, 0)
-        context.paint()
-
-        context.select_font_face(
-            FONT_FACE,
-            cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD
-        )
-        context.set_source_rgba(0.85, 0.85, 0.85, 1)
-        context.set_font_size(FONT_SIZE)
-        context.move_to(X_OFFSET, Y_OFFSET)
-        context.show_text(text)
-
-        # get the resulting pixbuf
-        surface = context.get_target()
-        pixbuf = Gdk.pixbuf_get_from_surface(
-            surface, 0, 0, surface.get_width(), surface.get_height())
-
-        return pixbuf
-
-    def run(self):
-        self.loop = GLib.MainLoop()
-        self.loop.run()
-
-
-if __name__ == '__main__':
-    # start class name with underscore so i3bar puts the icon first
-    Gdk.set_program_class('_ input sources')
-    keyboard_icon = KeyboardIcon()
-    keyboard_icon.run()
+    def _draw_langs_icon_theme(self):
+        langs = []
+        for gt in self.xkb_groups:
+            icon_name = 'indicator-keyboard-' + gt[:2].capitalize()
+            icon = self._get_theme_icon(icon_name)
+            langs.append(icon)
+        self.langs = langs

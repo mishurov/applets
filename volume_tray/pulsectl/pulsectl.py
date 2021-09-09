@@ -10,13 +10,31 @@ from . import _pulsectl as c
 
 
 if sys.version_info.major >= 3:
-	long, unicode, print_err = int, str, ft.partial(print, file=sys.stderr, flush=True)
+	long, unicode = int, str
+	print_err = ft.partial(print, file=sys.stderr, flush=True)
+	def wrapper_with_sig_info(func, wrapper, index_arg=False):
+		sig = inspect.signature(func or (lambda: None))
+		if index_arg:
+			sig = sig.replace(parameters=[inspect.Parameter( 'index',
+				inspect.Parameter.POSITIONAL_OR_KEYWORD )] + list(sig.parameters.values()))
+		wrapper.__name__, wrapper.__signature__, wrapper.__doc__ = '', sig, func.__doc__
+		return wrapper
+
 else:
 	range, map = xrange, it.imap
 	def print_err(*args, **kws):
 		kws.setdefault('file', sys.stderr)
 		print(*args, **kws)
 		kws['file'].flush()
+	def wrapper_with_sig_info(func, wrapper, index_arg=False):
+		func_args = list(inspect.getargspec(func or (lambda: None)))
+		func_args[0] = list(func_args[0])
+		if index_arg: func_args[0] = ['index'] + func_args[0]
+		wrapper.__name__ = '...'
+		wrapper.__doc__ = 'Signature: func' + inspect.formatargspec(*func_args)
+		if func.__doc__: wrapper.__doc__ += '\n\n' + func.__doc__
+		return wrapper
+
 
 is_str = lambda v,ext=None,native=False: (
 	isinstance(v, ( (unicode, bytes)
@@ -127,6 +145,8 @@ class PulseObject(object):
 					self.proplist[c.force_str(k)] = c.force_str(c.pa.proplist_gets(struct.proplist, k))
 			if hasattr(struct, 'volume'):
 				self.volume = self._get_wrapper(PulseVolumeInfo)(struct.volume)
+			if hasattr(struct, 'base_volume'):
+				self.base_volume = struct.base_volume / c.PA_VOLUME_NORM
 			if hasattr(struct, 'n_ports'):
 				cls_port = self._get_wrapper(PulsePortInfo)
 				self.port_list = list(
@@ -385,10 +405,11 @@ class Pulse(object):
 		c.pa.context_set_state_callback(self._ctx, self._pa_state_cb, None)
 		c.pa.context_set_subscribe_callback(self._ctx, self._pa_subscribe_cb, None)
 
-	def connect(self, autospawn=False, wait=False):
+	def connect(self, autospawn=False, wait=False, timeout=None):
 		'''Connect to pulseaudio server.
 			"autospawn" option will start new pulse daemon, if necessary.
-			Specifying "wait" option will make function block until pulseaudio server appears.'''
+			Specifying "wait" option will make function block until pulseaudio server appears.
+			"timeout" (in seconds) will raise PulseError if connection not established within it.'''
 		if self._loop_closed:
 			raise PulseError('Eventloop object was already'
 				' destroyed and cannot be reused from this instance.')
@@ -398,7 +419,19 @@ class Pulse(object):
 		if wait: flags |= c.PA_CONTEXT_NOFAIL
 		try: c.pa.context_connect(self._ctx, self.server, flags, None)
 		except c.pa.CallError: self.connected = False
-		while self.connected is None: self._pulse_iterate()
+		if not timeout: # simplier process
+			while self.connected is None: self._pulse_iterate()
+		else:
+			self._loop_stop, delta, ts_deadline = True, 1, c.mono_time() + timeout
+			while self.connected is None:
+				delta = ts_deadline - c.mono_time()
+				self._pulse_poll(delta)
+				if delta <= 0: break
+			self._loop_stop = False
+			if not self.connected:
+				c.pa.context_disconnect(self._ctx)
+				while self.connected is not False: self._pulse_iterate()
+				raise PulseError('Timed-out connecting to pulseaudio server [{:,.1f}s]'.format(timeout))
 		if self.connected is False: raise PulseError('Failed to connect to pulseaudio server')
 
 	def disconnect(self):
@@ -490,7 +523,7 @@ class Pulse(object):
 			ts_deadline = timeout and (ts + timeout)
 			while True:
 				delay = max(0, int((ts_deadline - ts) * 1000)) if ts_deadline else -1
-				c.pa.mainloop_prepare(loop, delay) # usec
+				c.pa.mainloop_prepare(loop, delay) # delay in ms
 				c.pa.mainloop_poll(loop)
 				if self._loop_closed: break # interrupted by close() or such
 				c.pa.mainloop_dispatch(loop)
@@ -526,10 +559,8 @@ class Pulse(object):
 				if not data: raise PulseIndexError(index)
 				data, = data
 			return data
-		_wrapper_method.__name__ = '...'
-		_wrapper_method.__doc__ = 'Signature: func({})'.format(
-			'' if pulse_func.__name__.endswith('_list') or singleton or not index_arg else 'index' )
-		return _wrapper_method
+		return wrapper_with_sig_info( None, _wrapper_method,
+			not (pulse_func.__name__.endswith('_list') or singleton or not index_arg) )
 
 	get_sink_by_name = _pulse_get_list(
 		c.PA_SINK_INFO_CB_T,
@@ -593,13 +624,7 @@ class Pulse(object):
 				try: pulse_op(self._ctx, *(list(pulse_args) + [cb, None]))
 				except c.ArgumentError as err: raise TypeError(err.args)
 				except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
-		func_args = list(inspect.getargspec(func or (lambda: None)))
-		func_args[0] = list(func_args[0])
-		if index_arg: func_args[0] = ['index'] + func_args[0]
-		_wrapper.__name__ = '...'
-		_wrapper.__doc__ = 'Signature: func' + inspect.formatargspec(*func_args)
-		if func.__doc__: _wrapper.__doc__ += '\n\n' + func.__doc__
-		return _wrapper
+		return wrapper_with_sig_info(func, _wrapper, index_arg)
 
 	card_profile_set_by_index = _pulse_method_call(
 		c.pa.context_set_card_profile_by_index, lambda profile_name: profile_name )
@@ -654,6 +679,8 @@ class Pulse(object):
 			try: c.pa.context_load_module(self._ctx, name, args, cb, None)
 			except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
 		index, = data
+		if index == c.PA_INVALID:
+			raise PulseError('Failed to load module: {} {}'.format(name, args))
 		return index
 
 	module_unload = _pulse_method_call(c.pa.context_unload_module, None)
