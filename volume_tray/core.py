@@ -6,12 +6,15 @@ import dbus
 # pulsectl 21.9.1 / https://pypi.org/project/pulsectl/#files
 from pulsectl import Pulse, PulseDisconnected
 
+from x11_global_key_listener import X11GlobalKeyListener
+
 APP_NAME = 'Volume Tray'
 
 LABEL_MIXER = 'Pulseaudio...'
 LABEL_EXIT = 'Exit'
 CMD_MIXER = 'pavucontrol'
 SCROLL_BY = 1
+MEDIA_KEY_STEP = 5
 
 VOLUME_WIDTH = 200
 VOLUME_HEIGHT = 50
@@ -235,3 +238,29 @@ class VolumeMixin(object):
                 link = device['links'][i]
                 self.insert_subaction_item(profile, link, pos)
                 pos += 1
+
+
+class MediaKeysMixin(object):
+    VOLUME_UP_KEYSYM = 0x1008ff13
+    VOLUME_DOWN_KEYSYM = 0x1008ff11
+    VOLUME_MUTE_KEYSYM = 0x1008ff12
+    KEYSYMS = [VOLUME_UP_KEYSYM, VOLUME_DOWN_KEYSYM, VOLUME_MUTE_KEYSYM]
+
+    def on_media_key_pressed(self, args):
+        keysym, event_type = args
+        if keysym == self.VOLUME_MUTE_KEYSYM:
+            self.mixer.toggle_mute()
+        elif keysym == self.VOLUME_UP_KEYSYM:
+            self.mixer.change_volume(MEDIA_KEY_STEP)
+        elif keysym == self.VOLUME_DOWN_KEYSYM:
+            self.mixer.change_volume(-MEDIA_KEY_STEP)
+        volume, mute = self.mixer.get_sink_volume_and_mute()
+        icon_name = self.compute_icon_name(volume, mute)
+        if keysym == self.VOLUME_MUTE_KEYSYM:
+            summary = 'Mute' if mute else 'Unmute'
+        else:
+            summary = 'Volume {}%'.format(int(volume))
+        subprocess.Popen(['notify-send', summary])
+
+    def init_keys(self):
+        X11GlobalKeyListener(self.KEYSYMS, self.get_notify_callback())

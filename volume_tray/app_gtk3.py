@@ -1,19 +1,16 @@
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
-gi.require_version('Keybinder', '3.0')  # gir1.2-keybinder-3.0
-gi.require_version('Notify', '0.7')  # gir1.2-notify-0.7
 from gi.repository import GObject
 from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Gdk
-from gi.repository import Keybinder
-from gi.repository import Notify
 
 
 from core import (
     PulseMixer,
     VolumeMixin,
+    MediaKeysMixin,
     APP_NAME,
     LABEL_MIXER,
     LABEL_EXIT,
@@ -24,36 +21,9 @@ VOLUME_WIDTH = 300
 VOLUME_HEIGHT = 80
 
 ICON_SIZE = 22
-MEDIA_KEY_STEP = 5
 GDK_MONITOR = Gdk.Display.get_default().get_monitor(0)
 SCALE_FACTOR = GDK_MONITOR.get_scale_factor()
 ROOT_HEIGHT = GDK_MONITOR.get_geometry().height
-
-
-class MediaKeysMixin(object):
-    def change_vol_notify(self, key):
-        if key == 'XF86AudioMute':
-            self.mixer.toggle_mute()
-        elif key == 'XF86AudioRaiseVolume':
-            self.mixer.change_volume(MEDIA_KEY_STEP)
-        elif key == 'XF86AudioLowerVolume':
-            self.mixer.change_volume(-MEDIA_KEY_STEP)
-        volume, mute = self.mixer.get_sink_volume_and_mute()
-        icon_name = self.compute_icon_name(volume, mute)
-        if key == 'XF86AudioMute':
-            summary = 'Mute' if mute else 'Unmute'
-        else:
-            summary = 'Volume {}%'.format(int(volume))
-        self.notification.update(summary, '', icon_name)
-        self.notification.show()
-
-    def init_keys(self):
-        Keybinder.init()
-        Notify.init('Volume Tray')
-        self.notification = Notify.Notification.new('', '', 'volume')
-        Keybinder.bind('XF86AudioRaiseVolume', self.change_vol_notify)
-        Keybinder.bind('XF86AudioLowerVolume', self.change_vol_notify)
-        Keybinder.bind('XF86AudioMute', self.change_vol_notify)
 
 
 class SliderItem(Gtk.ImageMenuItem):
@@ -136,15 +106,19 @@ class SoundIcon(VolumeMixin, MediaKeysMixin):
         self.mixer = PulseMixer()
         self.init_dbus()
         self.create_icon()
-        self.mixer.start_listener(
-            lambda: lambda s: GLib.idle_add(self.update_icon)
-        )
+        self.mixer.start_listener(self.get_pulse_callback)
         self.create_menu()
         self.update_icon()
         self.init_keys()
         self.create_styles()
 
         self.run()
+
+    def get_pulse_callback(self):
+        return lambda s: GLib.idle_add(self.update_icon)
+
+    def get_notify_callback(self):
+        return lambda k, t: GLib.idle_add(self.on_media_key_pressed, [k, t])
 
     def create_styles(self):
         css = (

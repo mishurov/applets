@@ -12,6 +12,7 @@ from PyQt5.QtGui import QIcon, QWheelEvent, QPainter
 from core import (
     PulseMixer,
     VolumeMixin,
+    MediaKeysMixin,
     APP_NAME,
     LABEL_MIXER,
     LABEL_EXIT,
@@ -109,8 +110,9 @@ class MenuItem(QWidgetAction):
         self.label.setEnabled(enabled)
 
 
-class SoundIcon(QObject, VolumeMixin):
+class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
     icon_updated = pyqtSignal(object)
+    media_key_pressed = pyqtSignal(list)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -124,12 +126,20 @@ class SoundIcon(QObject, VolumeMixin):
         self.mixer = PulseMixer()
         self.init_dbus()
         self.create_icon()
-        self.mixer.start_listener(lambda: self.icon_updated.emit)
+        self.mixer.start_listener(self.get_pulse_callback)
         self.icon_updated.connect(self.update_icon)
         self.create_menu()
         self.update_icon()
+        self.init_keys()
+        self.media_key_pressed.connect(self.on_media_key_pressed)
 
         self.run()
+
+    def get_pulse_callback(self):
+        return self.icon_updated.emit
+
+    def get_notify_callback(self):
+        return lambda k, t: self.media_key_pressed.emit([k, t])
 
     def create_icon(self):
         self.icon_name = ''
