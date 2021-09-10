@@ -1,11 +1,7 @@
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('Gdk', '3.0')
-from gi.repository import GObject
-from gi.repository import GLib
-from gi.repository import Gtk
-from gi.repository import Gdk
-
+from gi.repository import GObject, GLib, Gtk, Gdk
 
 from core import (
     PulseMixer,
@@ -16,6 +12,7 @@ from core import (
     LABEL_EXIT,
     SCROLL_BY
 )
+
 
 VOLUME_WIDTH = 300
 VOLUME_HEIGHT = 80

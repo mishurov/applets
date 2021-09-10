@@ -4,16 +4,16 @@ import os
 import gi
 gi.require_version('Gdk', '3.0')
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gio, Gtk, Gdk, GLib, GdkPixbuf
 
 from core import (
     TimerMixin,
     ALERT_TEXT,
     BUTTON_LABEL,
     EXIT_LABEL,
-    ICON_NAME,
-    ICON_NAME_URGENT,
-    ICON_NAME_ACTIVE,
+    ALARM_PATH,
+    ALARM_URGENT_PATH,
+    ALARM_ACTIVE_PATH,
     SPINBOX_WINDOW_TITLE,
 )
 
@@ -84,15 +84,30 @@ class Reminder(TimerMixin):
         self.window.hide()
         return True
 
+    def get_scaled_icon(self, path):
+        # make QT and GTK icon sizes identical
+        scale_factor = 0.92
+        size = ICON_SIZE * SCALE_FACTOR
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            path, size, size, True
+        )
+        wo = pixbuf.get_width()
+        ho = pixbuf.get_height()
+        bg = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, True, 8, wo, ho)
+        ws = wo * scale_factor
+        hs = ho * scale_factor
+        ox = (wo - ws) / 2
+        oy = (ho - hs) / 2
+        pixbuf = pixbuf.scale_simple(ws, ws, GdkPixbuf.InterpType.BILINEAR)
+        pixbuf.copy_area(0, 0, ws, ws, bg, ox, oy)
+        return bg
+
     def setup_icon(self):
         self.icon = Gtk.StatusIcon()
         icon_theme = Gtk.IconTheme.get_default()
-        self.icon_normal = icon_theme.load_icon_for_scale(
-            ICON_NAME, ICON_SIZE, SCALE_FACTOR, 0)
-        self.icon_urgent = icon_theme.load_icon_for_scale(
-            ICON_NAME_URGENT, ICON_SIZE, SCALE_FACTOR, 0)
-        self.icon_active = icon_theme.load_icon_for_scale(
-            ICON_NAME_ACTIVE, ICON_SIZE, SCALE_FACTOR, 0)
+        self.icon_normal = self.get_scaled_icon(ALARM_PATH)
+        self.icon_urgent = self.get_scaled_icon(ALARM_URGENT_PATH)
+        self.icon_active = self.get_scaled_icon(ALARM_ACTIVE_PATH)
         self.set_icon(self.icon_normal)
         self.icon.connect('activate', self.activate_menu)
 

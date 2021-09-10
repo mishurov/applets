@@ -3,19 +3,21 @@ import re
 import json
 from datetime import datetime, timedelta
 
-HOME = os.environ.get("HOME")
-CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
-REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
 
 ALERT_TEXT = 'Alarm'
 BUTTON_LABEL = 'Start'
 EXIT_LABEL = 'Quit'
-
-ICON_NAME = 'alarm-clock'
-ICON_NAME_URGENT = 'alarm-clock-urgent'
-ICON_NAME_ACTIVE = 'alarm-clock-active'
-
 SPINBOX_WINDOW_TITLE = 'Reminder'
+
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+ASSETS_DIR = os.path.join(FILE_DIR, '..', 'Resources')
+ALARM_PATH = os.path.join(ASSETS_DIR, 'alarm-clock.svg')
+ALARM_URGENT_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-urgent.svg')
+ALARM_ACTIVE_PATH = os.path.join(ASSETS_DIR, 'alarm-clock-active.svg')
+
+HOME = os.environ.get("HOME")
+CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
+REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
 
 
 def str_to_timedelta(s):

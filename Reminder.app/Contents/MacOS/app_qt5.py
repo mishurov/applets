@@ -19,11 +19,20 @@ from core import (
     ALERT_TEXT,
     BUTTON_LABEL,
     EXIT_LABEL,
-    ICON_NAME,
-    ICON_NAME_URGENT,
-    ICON_NAME_ACTIVE,
+    ASSETS_DIR,
+    ALARM_PATH,
+    ALARM_URGENT_PATH,
+    ALARM_ACTIVE_PATH,
     SPINBOX_WINDOW_TITLE,
 )
+
+CLOCK_FONT_SIZE = 35
+SPINBOX_SPACING = 3
+SPINBOX_WINDOW_SPACING = 9
+
+LINUX_CSS = os.path.join(ASSETS_DIR, 'linux.css')
+MACOS_CSS = os.path.join(ASSETS_DIR, 'macos.css')
+APP_STYLESHEET = MACOS_CSS if sys.platform == 'darwin' else LINUX_CSS
 
 
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -32,19 +41,6 @@ if sys.platform == 'darwin':
     import AppKit
     info = AppKit.NSBundle.mainBundle().infoDictionary()
     info["LSUIElement"] = "1"
-
-CLOCK_FONT_SIZE = 35
-SPINBOX_SPACING = 3
-SPINBOX_WINDOW_SPACING = 9
-
-FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-ASSETS_DIR = os.path.join(FILE_DIR, '..', 'Resources')
-LINUX_CSS = os.path.join(ASSETS_DIR, 'linux.css')
-MACOS_CSS = os.path.join(ASSETS_DIR, 'macos.css')
-APP_STYLESHEET = MACOS_CSS if sys.platform == 'darwin' else LINUX_CSS
-ALARM_PATH = os.path.join(ASSETS_DIR, ICON_NAME + '.svg')
-ALARM_URGENT_PATH = os.path.join(ASSETS_DIR, ICON_NAME_URGENT + '.svg')
-ALARM_ACTIVE_PATH = os.path.join(ASSETS_DIR, ICON_NAME_ACTIVE + '.svg')
 
 
 class ShowCenterMixin(object):
@@ -257,6 +253,11 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
 
 
 if __name__ == '__main__':
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    # fixes tray icon rendering artefacts in X11
+    if sys.platform != 'darwin':
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
     Reminder()

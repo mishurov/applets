@@ -4,7 +4,7 @@ QMenu {
 
 QLabel {
   padding: 3px 18px;
-  font-size: 12px;
+  font-size: 13px;
   color: #ddd;
   font-weight: bold;
 }
@@ -18,7 +18,7 @@ QLabel:disabled {
 }
 
 QLabel#section {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 QLabel#subaction {
@@ -27,7 +27,7 @@ QLabel#subaction {
 }
 
 QSlider {
-  font-size: 12px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 50%);
 }
 

@@ -122,7 +122,6 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.screen_height = self.app.primaryScreen().geometry().height()
         with open(LINUX_CSS, 'r') as css_file:
             self.app.setStyleSheet(css_file.read())
-
         self.mixer = PulseMixer()
         self.init_dbus()
         self.create_icon()
@@ -243,4 +242,10 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         sys.exit(self.app.exec_())
 
 if __name__ == '__main__':
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    # fixes tray icon rendering artefacts
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     SoundIcon()
