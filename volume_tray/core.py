@@ -1,5 +1,6 @@
 import subprocess
 import threading
+from datetime import datetime, timedelta
 
 # sudo apt install python3-dbus
 import dbus
@@ -119,6 +120,9 @@ class PulseMixer(object):
             volume += value / 100.0
             volume = min(max(volume, 0), 1)
             self.pulse.volume_set_all_chans(self.active_sink, volume)
+
+    def get_mute(self):
+        return self.active_sink.mute
 
     def toggle_mute(self):
         sink = self.active_sink
@@ -246,21 +250,50 @@ class MediaKeysMixin(object):
     VOLUME_MUTE_KEYSYM = 0x1008ff12
     KEYSYMS = [VOLUME_UP_KEYSYM, VOLUME_DOWN_KEYSYM, VOLUME_MUTE_KEYSYM]
 
+    NOTIFY_EXPIRE_SEC = 3
+    prev_notification = {
+        'id': None,
+        'time': None,
+    }
+
     def on_media_key_pressed(self, args):
         keysym, event_type = args
+        prev_mute = self.mixer.get_mute()
         if keysym == self.VOLUME_MUTE_KEYSYM:
             self.mixer.toggle_mute()
-        elif keysym == self.VOLUME_UP_KEYSYM:
+        elif not prev_mute and keysym == self.VOLUME_UP_KEYSYM:
             self.mixer.change_volume(MEDIA_KEY_STEP)
-        elif keysym == self.VOLUME_DOWN_KEYSYM:
+        elif not prev_mute and keysym == self.VOLUME_DOWN_KEYSYM:
             self.mixer.change_volume(-MEDIA_KEY_STEP)
         volume, mute = self.mixer.get_sink_volume_and_mute()
         icon_name = self.compute_icon_name(volume, mute)
         if keysym == self.VOLUME_MUTE_KEYSYM:
             summary = 'Mute' if mute else 'Unmute'
+        elif prev_mute:
+            summary = 'Muted'
         else:
             summary = 'Volume {}%'.format(int(volume))
-        subprocess.Popen(['notify-send', summary])
+        self.send_notification(summary)
+
+    def send_notification(self, summary):
+        now = datetime.now()
+        prev_time = self.prev_notification['time']
+        notification_id = 0
+        if prev_time and (now - prev_time).total_seconds() < self.NOTIFY_EXPIRE_SEC:
+            notification_id = self.prev_notification['id']
+        new_id = self.notfy_intf.Notify('', notification_id, '', summary, '',
+                                        [], {}, self.NOTIFY_EXPIRE_SEC * 1000)
+        self.prev_notification['time'] = now
+        self.prev_notification['id'] = new_id
+
+    def init_notifications(self):
+        item = 'org.freedesktop.Notifications'
+        self.notfy_intf = dbus.Interface(
+            dbus.SessionBus().get_object(item, '/' + item.replace('.', '/')),
+            item
+        )
 
     def init_keys(self):
         X11GlobalKeyListener(self.KEYSYMS, self.get_notify_callback())
+        self.init_notifications()
+
