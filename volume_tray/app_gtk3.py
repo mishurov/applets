@@ -112,7 +112,7 @@ class SoundIcon(VolumeMixin, MediaKeysMixin):
         self.run()
 
     def get_pulse_callback(self):
-        return lambda s: GLib.idle_add(self.update_icon)
+        return lambda e: GLib.idle_add(self.update_icon, e)
 
     def get_notify_callback(self):
         return lambda k, t: GLib.idle_add(self.on_media_key_pressed, [k, t])

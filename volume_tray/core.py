@@ -1,3 +1,4 @@
+import time
 import subprocess
 import threading
 from datetime import datetime, timedelta
@@ -138,7 +139,7 @@ class PulseMixer(object):
 
     def async_listener(self):
         self.pulse_d = Pulse('volume-daemon')
-        self.pulse_d.event_mask_set('sink')
+        self.pulse_d.event_mask_set('sink', 'card')
 
         # Glib.idle_add is to run the callback in the UI thread
         self.pulse_d.event_callback_set(self.callback())
@@ -172,6 +173,16 @@ class VolumeMixin(object):
         return icon_name
 
     def update_icon(self, *args):
+        if len(args):
+            e = args[0]
+            if e.facility == 'card':
+                if e.t == 'remove':
+                    self.mixer.introspect()
+                    keys = list(self.mixer.all_profiles.keys())
+                    if len(keys):
+                        self.mixer.set_profile(keys[0])
+                return
+
         if not self.is_menu_visible():
             self.mixer.get_active_sink()
         volume, mute = self.mixer.get_sink_volume_and_mute()

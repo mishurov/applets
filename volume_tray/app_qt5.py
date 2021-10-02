@@ -135,7 +135,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.run()
 
     def get_pulse_callback(self):
-        return self.icon_updated.emit
+        return lambda e: self.icon_updated.emit(e)
 
     def get_notify_callback(self):
         return lambda k, t: self.media_key_pressed.emit([k, t])
