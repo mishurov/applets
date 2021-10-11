@@ -1,13 +1,10 @@
-QPushButton {
-  border: 0;
-}
-
 QPushButton#menu {
   color: palette(dark);
   outline: 0;
   border-radius: 5px;
   padding: 5px;
   margin: 5px;
+  min-width: 150px;
 }
 
 QPushButton#menuhover {
@@ -19,16 +16,33 @@ QPushButton#menuhover {
 }
 
 QPushButton#spin {
-  width: 15px;
+  width: 17px;
+  height: 17px;
   padding: 5px;
-  margin-left: 3px;
-  margin-right: 6px;
-  outline: 0;
-  border-radius: 4px;
+  margin-left: 6px;
+  margin-right: 10px;
+  margin-bottom: 4px;
 }
 
-QPushButton#spin:hover {
-  background-color: palette(highlight);
+QPushButton#start {
+  height: 20px;
+  padding: 5px;
+}
+
+QPushButton#spin, QPushButton#start {
+  outline: 0;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  border-color: #555;
+}
+
+QPushButton#spin:hover, QPushButton#start:hover {
+  background-color: #555;
+}
+
+QPushButton#spin:pressed, QPushButton#start:pressed {
+  background-color: #777;
 }
 
 QSpinBox {

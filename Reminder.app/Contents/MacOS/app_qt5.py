@@ -80,6 +80,7 @@ class ButtonSpinBox(QHBoxLayout):
         super().__init__(*args, **kwargs)
         label = QLabel(text)
         self.spin = QSpinBox()
+        self.spin.setAlignment(Qt.AlignRight)
         self.spin.setRange(0, 23 if text == 'h' else 59)
         self.spin.setButtonSymbols(QSpinBox.NoButtons)
         if sys.platform == 'darwin':
@@ -241,6 +242,8 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.show_center(self.popup)
 
     def is_menu_visible(self):
+        if sys.platform == 'darwin':
+            return True
         return self.menu.isVisible()
 
     def run(self):
