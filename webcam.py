@@ -350,6 +350,17 @@ class Camera(Gtk.Application):
         rows = self.get_grid_rows(grid)
         grid.attach(button, 0, rows, 2, 1)
 
+    def add_exit(self, grid):
+        button = Gtk.Button.new_with_label('Exit')
+        button.connect('clicked', lambda x: self.quit())
+        rows = self.get_grid_rows(grid)
+        grid.attach(button, 0, rows, 2, 1)
+
+    def move_right(self, w):
+        sw = Gdk.Display.get_default().get_monitor(0).get_geometry().width
+        ww, _ = w.get_size()
+        w.move(sw - ww, 25)
+
     def update_controls(self):
         controls_data = self.v4l2_ctl.read_controls()
         for k, v in self.ui_controls.items():
@@ -360,11 +371,13 @@ class Camera(Gtk.Application):
 
     def update_format(self):
         current_format = self.v4l2_ctl.get_format()
-        self.ui_format.set_value(self.formats.index(current_format))
+        if current_format != [None, None, None]:
+            self.ui_format.set_value(index)
 
     def do_activate(self):
-        w = Gtk.Window()
-        w.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+        w = Gtk.Window.new(Gtk.WindowType.POPUP)
+        #w = Gtk.Window()
+        #w.set_type_hint(Gdk.WindowTypeHint.DIALOG)
         w.set_role('V4l2Ctl')
         w.set_title('v4l2-ctl')
 
@@ -379,6 +392,7 @@ class Camera(Gtk.Application):
         g.set_border_width(15)
         g.set_row_spacing(5)
         g.set_column_spacing(7)
+        self.add_exit(g)
         self.add_controls(g)
         self.add_format(g)
         self.add_export(g)
@@ -389,6 +403,7 @@ class Camera(Gtk.Application):
         self.add_window(w)
         self.update_controls()
         self.update_format()
+        self.move_right(w)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
