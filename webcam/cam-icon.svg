@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   id="Layer_1"
+   x="0px"
+   y="0px"
+   viewBox="0 0 512 512"
+   style="enable-background:new 0 0 512 512;"
+   xml:space="preserve"
+   sodipodi:docname="cam-icon.svg"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"><metadata
+   id="metadata11"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+   id="defs9">
+	
+</defs><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1600"
+   inkscape:window-height="873"
+   id="namedview7"
+   showgrid="false"
+   inkscape:zoom="0.84266367"
+   inkscape:cx="183.34717"
+   inkscape:cy="236.74926"
+   inkscape:window-x="0"
+   inkscape:window-y="27"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="Layer_1"
+   inkscape:document-rotation="0"
+   inkscape:pagecheckerboard="0" />
+<style
+   type="text/css"
+   id="style2">
+	.st0{fill:#333333;}
+</style>
+
+<path
+   id="rect885-7"
+   style="fill:#dfdfdf;stroke-width:1.60097;stroke-linecap:round"
+   d="M 248.57456,264.49718 422.34445,135.9088 v 257.17676 z"
+   sodipodi:nodetypes="cccc" /><rect
+   style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#dfdfdf;stroke-width:31.7579;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+   id="rect11"
+   width="174.08061"
+   height="174.08063"
+   x="81.564888"
+   y="177.45686"
+   rx="29.291971"
+   ry="29.291971" /></svg>
