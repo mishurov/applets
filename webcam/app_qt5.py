@@ -14,7 +14,7 @@ from core import V4l2Ctl
 
 
 APP_NAME = 'Cam'
-MAX_MENU_HEIGHT = 700
+MENU_HEIGHT = 400
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 ICON_PATH = os.path.join(FILE_DIR, 'cam-icon.svg')
 LINUX_CSS = os.path.join(FILE_DIR, 'linux.css')
@@ -215,17 +215,9 @@ class CameraIcon(QObject):
         self.icon = QSystemTrayIcon(QIcon(ICON_PATH))
         self.icon.activated.connect(self.activate)
 
-    def menu_about_to_show(self):
-        # TODO: fix compute width
-        width = self.action.widget.sizeHint().width()
-        self.menu.setMinimumWidth(width + 20)
-
     def create_menu(self):
         self.menu = QMenu()
-        self.menu.aboutToShow.connect(self.menu_about_to_show)
-        self.menu.setMaximumHeight(MAX_MENU_HEIGHT)
         self.action = Action(self.menu)
-        self.action.scroll.setMaximumHeight(MAX_MENU_HEIGHT)
         self.menu.addAction(self.action)
 
     def activate_exit(self, *args):
@@ -329,6 +321,21 @@ class CameraIcon(QObject):
         if self.current_format != [None, None, None]:
             self.ui_format.set_value(self.formats.index(self.current_format))
 
+    def update_menu_size(self):
+        self.action.layout.invalidate()
+        self.action.layout.activate()
+        hint = self.action.widget.sizeHint()
+        width = hint.width() + 20
+        height = min(MENU_HEIGHT, hint.height())
+        self.action.scroll.setFixedWidth(width)
+        self.action.scroll.setFixedHeight(height)
+        self.menu.setFixedWidth(width)
+        self.menu.setFixedHeight(height)
+        self.menu.setAttribute(Qt.WA_DontShowOnScreen, True)
+        self.menu.show()
+        self.menu.hide()
+        self.menu.setAttribute(Qt.WA_DontShowOnScreen, False)
+
     def activate(self, reason):
         self.controls_data = self.v4l2_ctl.read_controls()
         self.formats = self.v4l2_ctl.read_formats()
@@ -337,6 +344,7 @@ class CameraIcon(QObject):
         self.update_controls()
         self.update_format()
         icon_pos = self.icon.geometry().bottomRight()
+        self.update_menu_size()
         self.menu.popup(icon_pos)
         return True
 
