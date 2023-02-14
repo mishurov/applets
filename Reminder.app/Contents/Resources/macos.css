@@ -1,18 +1,19 @@
-QPushButton#menu {
-  color: palette(dark);
-  outline: 0;
-  border-radius: 5px;
-  padding: 5px;
-  margin: 5px;
-  min-width: 150px;
+QWidget#window {
+  background-color: #322d30;
 }
 
-QPushButton#menuhover {
-  color: palette(text);
+QPushButton#menuItem, QPushButton#menuItemHover {
+  outline: 0;
   border-radius: 5px;
-  padding: 5px;
-  margin: 5px;
-  background-color: palette(highlight);
+  padding: 2px 8px;
+  margin: 0px 5px;
+  color: palette(text);
+  min-width: 132px;
+  text-align: left;
+}
+
+QPushButton#menuItemHover {
+  background-color: rgba(250, 240, 245, 20);
 }
 
 QPushButton#spin {
@@ -24,21 +25,27 @@ QPushButton#spin {
   margin-bottom: 4px;
 }
 
-QPushButton#start {
-  height: 20px;
-  padding: 5px;
-}
-
 QPushButton#spin, QPushButton#start {
   outline: 0;
   border-width: 1px;
   border-style: solid;
-  border-radius: 4px;
-  border-color: #555;
+  border-radius: 8px;
+}
+
+QPushButton#start {
+  height: 20px;
+  padding: 5px;
+  background-color: #4b444a;
+  border-color: #2d272d;
+}
+
+QPushButton#spin {
+  background-color: #3b343a;
+  border: none;
 }
 
 QPushButton#spin:hover, QPushButton#start:hover {
-  background-color: #555;
+  background-color: #5b545a;
 }
 
 QPushButton#spin:pressed, QPushButton#start:pressed {
@@ -49,8 +56,19 @@ QSpinBox {
   width: 40px;
   height: 35px;
   font-size: 16px;
+  background-color: #1f191e;
+}
+
+QWidget#popup {
+  background-color: #322f2f;
+  border-radius: 10px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #444;
 }
 
 QWidget#popup > QLabel {
-  font-size: 65px;
+  font-size: 90px;
+  margin: 20px 1px;
+  padding: -5px;
 }

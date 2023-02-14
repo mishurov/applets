@@ -1,11 +1,11 @@
-QPushButton#menu,QPushButton#menu {
+QPushButton#menuItem,QPushButton#menuItem {
   color: #ddd;
   outline: 0;
   border-radius: 0;
   padding: 5px;
 }
 
-QPushButton#menu:hover {
+QPushButton#menuItem:hover {
   color: #eee;
   background-color: #f0544c;
 }

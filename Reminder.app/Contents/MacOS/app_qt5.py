@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-# brew install pyqt5
+# brew install python3 pyqt5
 # /usr/local/bin/pip3 install -U PyObjC
 # mkdir ~/.cache
 
@@ -63,14 +63,14 @@ class OsxMenuMixin(object):
     def on_menu_hovered_macos(self, action):
         for a in self.menu.actions:
             if a == action:
-                a.button.setProperty('objectName', 'menuhover')
+                a.button.setProperty('objectName', 'menuItemHover')
             else:
-                a.button.setProperty('objectName', 'menu')
+                a.button.setProperty('objectName', 'menuItem')
             self.update_style(a.button)
 
     def on_menu_activated_macos(self):
         for a in self.menu.actions:
-            a.button.setProperty('objectName', 'menu')
+            a.button.setProperty('objectName', 'menuItem')
             self.update_style(a.button)
 
 
@@ -136,6 +136,10 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         hlayout = QHBoxLayout()
         hlayout.setSpacing(SPINBOX_WINDOW_SPACING)
 
+        if sys.platform == 'darwin':
+            vlayout.setSpacing(0)
+            vlayout.setContentsMargins(14, 7, 14, 16)
+
         self.spins = []
         for label in ['h', 'm', 's']:
             button_spin = ButtonSpinBox(label=label)
@@ -164,22 +168,26 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
 
     def setup_menu(self):
         self.menu = QMenu()
+        self.menu.setProperty('objectName', 'menu')
         clock_item = QWidgetAction(self.menu)
         self.clock = QPushButton(' ')
-        self.clock.setProperty('objectName', 'menu')
+        self.clock.setProperty('objectName', 'menuItem')
         font = self.clock.font()
         font.setPixelSize(CLOCK_FONT_SIZE)
         self.clock.setFont(font)
+
         clock_item.setDefaultWidget(self.clock)
         self.clock.clicked.connect(self.activate_window)
 
         exit_item = QWidgetAction(self.menu)
         label = QPushButton(EXIT_LABEL)
-        label.setProperty('objectName', 'menu')
+        label.setProperty('objectName', 'menuItem')
         exit_item.setDefaultWidget(label)
         label.clicked.connect(self.activate_exit)
 
         self.menu.addAction(clock_item)
+        if sys.platform == 'darwin':
+            self.menu.addSeparator()
         self.menu.addAction(exit_item)
 
         if sys.platform == 'darwin':
@@ -191,11 +199,24 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
     def setup_popup(self):
         self.popup = QWidget()
         self.popup.setProperty('objectName', 'popup')
-        vlayout = QVBoxLayout(self.popup)
-        label = QLabel(ALERT_TEXT)
-        vlayout.addWidget(label)
         self.popup.setWindowFlags(Qt.Sheet | Qt.Popup |
             Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+
+        if sys.platform == 'darwin':
+            self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
+            cvlayout = QVBoxLayout(self.popup)
+            self.popup.setProperty('objectName', 'popupContainer')
+            roundBox = QWidget()
+            roundBox.setProperty('objectName', 'popup')
+            cvlayout.addWidget(roundBox)
+            vlayout = QVBoxLayout(roundBox)
+            cvlayout.setContentsMargins(0, 0, 0, 0)
+            vlayout.setContentsMargins(0, 0, 0, 0)
+        else:
+            vlayout = QVBoxLayout(self.popup)
+
+        label = QLabel(ALERT_TEXT)
+        vlayout.addWidget(label)
 
         self.popup.mouseReleaseEvent = self.on_popup_release
 
@@ -236,6 +257,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.icon.setIcon(icon)
 
     def update_clock_text(self, text):
+        text = text.strip()
         self.clock.setText(text)
 
     def show_popup(self):
