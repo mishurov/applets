@@ -213,6 +213,8 @@ class VolumeMixin(object):
                     continue
                 name = dev['Name']
                 batt = interfaces['org.bluez.Battery1']
+                if 'Percentage' not in batt:
+                    continue
                 perc_bytes = bytes([batt['Percentage']])
                 perc_int = int.from_bytes(perc_bytes, 'little')
                 ret[name] = ' ∙ ' + str(perc_int) + '%'
