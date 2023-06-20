@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QSystemTrayIcon, QMenu,
     QWidgetAction, QLabel, QScrollArea, QGridLayout, QPushButton, QWidget,
     QHBoxLayout, QSpinBox, QSlider, QComboBox, QCheckBox, QFileDialog,
     QStyledItemDelegate)
-from PyQt5.QtGui import QIcon, QResizeEvent
+from PyQt5.QtGui import QIcon, QResizeEvent, QCursor
 
 from core import V4l2Ctl
 
@@ -344,8 +344,9 @@ class CameraIcon(QObject):
         self.update_controls()
         self.update_format()
         icon_pos = self.icon.geometry().bottomRight()
+        pos = QPoint(QCursor.pos().x(), icon_pos.y())
         self.update_menu_size()
-        self.menu.popup(icon_pos)
+        self.menu.popup(pos)
         return True
 
     def run(self):

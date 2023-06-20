@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QAction, QWidgetAction, QSlider,
     QLabel
 )
-from PyQt5.QtGui import QIcon, QWheelEvent, QPainter
+from PyQt5.QtGui import QIcon, QWheelEvent, QPainter, QCursor
 
 from core import (
     PulseMixer,
@@ -189,12 +189,10 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.slider_item.setEnabled(not mute)
 
         icon_pos = self.icon.geometry().bottomRight()
-        width = min(self.menu.geometry().width(), VOLUME_WIDTH)
+        pos = QPoint(QCursor.pos().x(), icon_pos.y())
         if icon_pos.y() > self.screen_height / 2:
-            pos = icon_pos - QPoint(width, 40)
             self.menu.popup(pos, self.menu.actions()[-1])
         else:
-            pos = icon_pos - QPoint(width, 0)
             self.menu.popup(pos)
         return True
 

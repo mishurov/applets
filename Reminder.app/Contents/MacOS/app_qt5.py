@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QVBoxLayout, QHBoxLayout, QPushButton,
     QDesktopWidget, QWidget, QMenu, QWidgetAction, QSpinBox, QLabel,
 )
-from PyQt5.QtGui import QIcon, QFont, QPalette
+from PyQt5.QtGui import QIcon, QFont, QPalette, QCursor
 
 from core import (
     TimerMixin,
@@ -45,7 +45,7 @@ if sys.platform == 'darwin':
 
 class ShowCenterMixin(object):
     def show_center(self, win):
-        centerPoint = QDesktopWidget().availableGeometry().center()
+        centerPoint = QDesktopWidget().availableGeometry(self.menu).center()
         win.show()
         win_geo = win.frameGeometry()
         win_geo.moveCenter(centerPoint)
@@ -236,12 +236,10 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
             self.icon.setContextMenu(None)
             return
         icon_pos = self.icon.geometry().bottomRight()
-        width = min(self.menu.geometry().width(), 135)
+        pos = QPoint(QCursor.pos().x(), icon_pos.y())
         if icon_pos.y() > self.screen_height / 2:
-            pos = icon_pos - QPoint(width, 40)
             self.menu.popup(pos, self.menu.actions()[-1])
         else:
-            pos = icon_pos - QPoint(width, 0)
             self.menu.popup(pos)
 
     def activate_window(self, *args):
