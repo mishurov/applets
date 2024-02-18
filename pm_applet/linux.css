@@ -3,7 +3,7 @@ QMenu {
 }
 
 QLabel {
-  padding: 3px 18px;
+  padding: 3px 9px;
   font-size: 13px;
   color: #ddd;
   font-weight: bold;
@@ -22,8 +22,22 @@ QLabel#section {
 }
 
 QLabel#subaction {
-  padding-left: 25px;
   font-weight: normal;
+}
+
+QLabel#title {
+  margin: 0;
+  padding: 0 9px;
+}
+
+QLabel#subtitle {
+  margin: 0;
+  padding: 0 9px;
+  font-weight: normal;
+}
+
+QLabel#title:hover, QLabel#subtitle:hover {
+  background-color: transparent;
 }
 
 QSlider {

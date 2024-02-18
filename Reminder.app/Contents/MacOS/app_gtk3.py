@@ -14,7 +14,7 @@ from core import (
     ALARM_PATH,
     ALARM_URGENT_PATH,
     ALARM_ACTIVE_PATH,
-    SPINBOX_WINDOW_TITLE,
+    WINDOW_TITLE,
 )
 
 
@@ -24,7 +24,7 @@ SCALE_FACTOR = Gdk.Display.get_default().get_monitor(0).get_scale_factor()
 
 class Reminder(TimerMixin):
     def __init__(self):
-        Gdk.set_program_class(SPINBOX_WINDOW_TITLE)
+        Gdk.set_program_class(WINDOW_TITLE)
         self.setup_icon()
         self.setup_menu()
         self.setup_popup()
@@ -44,7 +44,7 @@ class Reminder(TimerMixin):
         self.window = Gtk.Window()
         self.window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
         self.window.set_position(Gtk.WindowPosition.CENTER)
-        self.window.set_title(SPINBOX_WINDOW_TITLE)
+        self.window.set_title(WINDOW_TITLE)
 
         vbox = Gtk.Box()
         vbox.set_orientation(Gtk.Orientation.VERTICAL)

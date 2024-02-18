@@ -1,6 +1,7 @@
 import threading
 from Xlib import display, X, XK, protocol
 from Xlib.ext import record
+from Xlib.error import DisplayNameError
 
 
 RANGE_PRESS = (X.KeyPress, X.KeyPress)

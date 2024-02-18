@@ -8,7 +8,7 @@ import dbus
 # pulsectl 21.9.1 / https://pypi.org/project/pulsectl/#files
 from pulsectl import Pulse, PulseDisconnected
 
-from x11_global_key_listener import X11GlobalKeyListener
+from x11_global_key_listener import X11GlobalKeyListener, DisplayNameError
 
 APP_NAME = 'Volume Tray'
 
@@ -27,7 +27,7 @@ PROFILE_HSP = "headset_head_unit"
 PROFILE_HSP_CVSD = "headset-head-unit-cvsd"
 PROFILE_HSP_MSBC = "headset-head-unit-msbc"
 PROFILE_A2DP = "a2dp_sink"
-#PROFILE_A2DP_SBC = "a2dp-sink-sbc"
+PROFILE_A2DP_SBC = "a2dp-sink"
 PROFILE_A2DP_XQ = "a2dp-sink-sbc_xq"
 PROFILE_A2DP_AAC = "a2dp-sink-aac"
 PROFILE_A2DP_APTX = "a2dp-sink-aptx"
@@ -37,7 +37,7 @@ PROFILE_MAP = {
     PROFILE_ANALOG: "Analog Duplex",
     #PROFILE_ANALOG_PRO: "Analog Pro",
     PROFILE_A2DP: "A2DP SBC",
-    #PROFILE_A2DP_SBC: "A2DP SBC",
+    PROFILE_A2DP_SBC: "A2DP SBC",
     PROFILE_A2DP_XQ: "A2DP SBC XQ",
     PROFILE_A2DP_AAC: "A2DP AAC",
     PROFILE_A2DP_APTX: "A2DP AptX",
@@ -307,6 +307,8 @@ class MediaKeysMixin(object):
         )
 
     def init_keys(self):
-        X11GlobalKeyListener(self.KEYSYMS, self.get_notify_callback())
-        self.init_notifications()
-
+        try:
+            X11GlobalKeyListener(self.KEYSYMS, self.get_notify_callback())
+            self.init_notifications()
+        except DisplayNameError as e:
+            print(e, ". You're probably running Wayland")

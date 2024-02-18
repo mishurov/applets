@@ -4,8 +4,14 @@ import signal
 
 from PyQt5.QtCore import Qt, QPoint, QRect, pyqtSignal, QObject
 from PyQt5.QtWidgets import (
-    QApplication, QSystemTrayIcon, QMenu, QAction, QWidgetAction, QSlider,
-    QLabel
+    QApplication,
+    QSystemTrayIcon,
+    QMenu,
+    QAction,
+    QWidgetAction,
+    QSlider,
+    QLabel,
+    QDialog,
 )
 from PyQt5.QtGui import QIcon, QWheelEvent, QPainter, QCursor
 
@@ -19,8 +25,11 @@ from core import (
     SCROLL_BY
 )
 
+from sway_ipc import set_sway_for_window_qt
+
 VOLUME_WIDTH = 250
 VOLUME_HEIGHT = 50
+ICON_THEME = 'Adwaita-Xfce'
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 LINUX_CSS = os.path.join(FILE_DIR, 'linux.css')
@@ -32,6 +41,8 @@ class LabelledSlider(QSlider):
     SLIDER_H_PADDING = 20
     RECT_W = 26
     RECT_H = 10
+
+    rightButtonClicked = pyqtSignal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -49,7 +60,8 @@ class LabelledSlider(QSlider):
         value = self.value()
         width = VOLUME_WIDTH - self.SLIDER_H_PADDING * 2
         mid_x = width * (value / 100) + self.SLIDER_H_PADDING
-        rect = QRect(int(mid_x - self.RECT_W / 2), 12, self.RECT_W, self.RECT_H)
+        rect = QRect(
+            int(mid_x - self.RECT_W / 2), 12, self.RECT_W, self.RECT_H)
         painter.drawText(rect, Qt.AlignCenter, str(value));
 
     def updateStyle(self):
@@ -58,7 +70,8 @@ class LabelledSlider(QSlider):
 
     def enterEvent(self, e):
         super().enterEvent(e)
-        self.setProperty('hovered', 'true')
+        self.setProperty(
+            'hovered', 'true' if self.isEnabled() else 'false')
         self.updateStyle()
 
     def leaveEvent(self, e):
@@ -66,9 +79,15 @@ class LabelledSlider(QSlider):
         self.setProperty('hovered', 'false')
         self.updateStyle()
 
+    def event(self, e):
+        if e.type() == e.MouseButtonRelease and e.button() == 2:
+            self.rightButtonClicked.emit()
+        return super().event(e)
+
 
 class SliderItem(QWidgetAction):
     value_changed = pyqtSignal(int)
+    rmb_clicked = pyqtSignal()
     init_x = None
 
     def __init__(self, *args, **kwargs):
@@ -84,6 +103,7 @@ class SliderItem(QWidgetAction):
         slider.setMinimumWidth(VOLUME_WIDTH)
         slider.setMinimumHeight(VOLUME_HEIGHT)
         slider.valueChanged.connect(self.onValueChanged)
+        slider.rightButtonClicked.connect(self.onRightButtonClicked)
         return slider
 
     def attachSlider(self):
@@ -95,6 +115,13 @@ class SliderItem(QWidgetAction):
 
     def onValueChanged(self, value):
         self.value_changed.emit(value)
+
+    def onRightButtonClicked(self):
+        self.rmb_clicked.emit()
+
+    def setEnabled(self, enabled):
+        # super().setEnabled(enabled)
+        self._slider.setEnabled(enabled)
 
 
 class MenuItem(QWidgetAction):
@@ -119,6 +146,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
         self.app.setApplicationName(APP_NAME)
+        self.app.setDesktopFileName('volume_tray')
         self.screen_height = self.app.primaryScreen().geometry().height()
         with open(LINUX_CSS, 'r') as css_file:
             self.app.setStyleSheet(css_file.read())
@@ -132,6 +160,13 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.init_keys()
         self.media_key_pressed.connect(self.on_media_key_pressed)
 
+        set_sway_for_window_qt(
+            QMenu,
+            self.icon,
+            self.menu,
+            'app_id="^volume_tray$" floating',
+        )
+
         self.run()
 
     def get_pulse_callback(self):
@@ -141,6 +176,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         return lambda k, t: self.media_key_pressed.emit([k, t])
 
     def create_icon(self):
+        QIcon.setThemeName(ICON_THEME)
         self.icon_name = ''
         self.icon = QSystemTrayIcon()
         self.icon.activated.connect(self.activate)
@@ -151,6 +187,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.menu = QMenu()
         self.slider_item = SliderItem(self.menu)
         self.slider_item.value_changed.connect(self.on_value_changed)
+        self.slider_item.rmb_clicked.connect(self.on_slider_rmb_clicked)
         mixer_item = self.create_mixer()
         exit_item = self.create_exit()
         self.menu.addAction(self.slider_item)
@@ -158,6 +195,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.menu.addSeparator()
         self.menu.addSeparator()
         self.menu.addAction(exit_item)
+        self.menu.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
 
     def create_mixer(self):
         item = MenuItem(LABEL_MIXER, self.menu)
@@ -177,18 +215,25 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.mixer.set_volume(value)
         return True
 
+    def on_slider_rmb_clicked(self):
+        self.mixer.toggle_mute()
+
     def activate(self, reason):
         if reason == QSystemTrayIcon.Context:
             self.mixer.toggle_mute()
             return True
         if reason != QSystemTrayIcon.Trigger:
             return False
+        if self.menu.isVisible():
+            self.menu.close()
+            return True
         self.update_menu()
         volume, mute = self.mixer.get_sink_volume_and_mute()
         self.slider_item.setValue(int(volume))
         self.slider_item.setEnabled(not mute)
-
+        self.menu.setFixedSize(self.menu.sizeHint())
         icon_pos = self.icon.geometry().bottomRight()
+
         pos = QPoint(QCursor.pos().x(), icon_pos.y())
         if icon_pos.y() > self.screen_height / 2:
             self.menu.popup(pos, self.menu.actions()[-1])

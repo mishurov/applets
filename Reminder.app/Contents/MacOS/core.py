@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 ALERT_TEXT = 'Alarm'
 BUTTON_LABEL = 'Start'
 EXIT_LABEL = 'Quit'
-SPINBOX_WINDOW_TITLE = 'Reminder'
+WINDOW_TITLE = 'Reminder'
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(FILE_DIR, '..', 'Resources')
@@ -19,6 +19,7 @@ HOME = os.environ.get("HOME")
 CACHE_DIR = os.environ.get("XDG_CACHE_HOME", None) or os.path.join(HOME, ".cache")
 REMINDER_FILE = os.path.join(CACHE_DIR, "reminder_data.json")
 
+DEFAULT_CLOCK = 'X:YY:ZZ'
 
 def str_to_timedelta(s):
     m = re.match(r'(?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>\d[\.\d+]*)', s)
@@ -66,7 +67,7 @@ class TimerMixin(object):
         if self.start is not None and self.timedelta is not None:
             t_time = '{hours:2d}:{minutes:02d}:{seconds:02d}'
         else:
-            t_time = 'X:YY:ZZ'
+            t_time = DEFAULT_CLOCK
 
         self.update_clock_text(t_time.format(**self.discount))
 

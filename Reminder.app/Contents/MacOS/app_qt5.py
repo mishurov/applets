@@ -9,8 +9,17 @@ import os
 import sys
 from PyQt5.QtCore import Qt, QTimer, QPoint, QUrl, QSize
 from PyQt5.QtWidgets import (
-    QApplication, QSystemTrayIcon, QVBoxLayout, QHBoxLayout, QPushButton,
-    QDesktopWidget, QWidget, QMenu, QWidgetAction, QSpinBox, QLabel,
+    QApplication,
+    QSystemTrayIcon,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QDesktopWidget,
+    QWidget,
+    QMenu,
+    QWidgetAction,
+    QSpinBox,
+    QLabel,
 )
 from PyQt5.QtGui import QIcon, QFont, QPalette, QCursor
 
@@ -23,8 +32,11 @@ from core import (
     ALARM_PATH,
     ALARM_URGENT_PATH,
     ALARM_ACTIVE_PATH,
-    SPINBOX_WINDOW_TITLE,
+    WINDOW_TITLE,
+    DEFAULT_CLOCK,
 )
+
+from sway_ipc import set_sway_for_window_qt
 
 CLOCK_FONT_SIZE = 35
 SPINBOX_SPACING = 3
@@ -102,7 +114,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
-        self.app.setApplicationName(SPINBOX_WINDOW_TITLE)
+        self.app.setDesktopFileName('reminder_tray')
         self.screen_height = self.app.primaryScreen().geometry().height()
         styleSheet = open(APP_STYLESHEET).read()
         if sys.platform == 'darwin':
@@ -115,6 +127,15 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.setup_menu()
         self.setup_popup()
         self.setup_window()
+
+        title = WINDOW_TITLE + 'ContextMenu'
+        set_sway_for_window_qt(
+            QMenu,
+            self.icon,
+            self.menu,
+            f'title="^{title}$" app_id="^reminder_tray$" floating',
+        )
+
         self.init_saved_alarm()
         self.idle()
         self.run()
@@ -129,7 +150,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
     def setup_window(self):
         self.window = QWidget()
         self.window.setProperty('objectName', 'window')
-        self.window.setWindowTitle(SPINBOX_WINDOW_TITLE)
+        self.window.setWindowTitle(WINDOW_TITLE)
         self.window.setWindowFlags(
             self.window.windowFlags() | Qt.WindowStaysOnTopHint | Qt.Dialog)
         vlayout = QVBoxLayout(self.window)
@@ -168,9 +189,10 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
 
     def setup_menu(self):
         self.menu = QMenu()
+        self.menu.setWindowTitle(WINDOW_TITLE + 'ContextMenu')
         self.menu.setProperty('objectName', 'menu')
         clock_item = QWidgetAction(self.menu)
-        self.clock = QPushButton(' ')
+        self.clock = QPushButton(DEFAULT_CLOCK)
         self.clock.setProperty('objectName', 'menuItem')
         font = self.clock.font()
         font.setPixelSize(CLOCK_FONT_SIZE)
@@ -189,6 +211,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         if sys.platform == 'darwin':
             self.menu.addSeparator()
         self.menu.addAction(exit_item)
+        self.menu.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
 
         if sys.platform == 'darwin':
             clock_item.button = self.clock
@@ -201,6 +224,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.popup.setProperty('objectName', 'popup')
         self.popup.setWindowFlags(Qt.Sheet | Qt.Popup |
             Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+        self.popup.setWindowTitle(WINDOW_TITLE)
 
         if sys.platform == 'darwin':
             self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -218,6 +242,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         label = QLabel(ALERT_TEXT)
         vlayout.addWidget(label)
 
+        self.popup.setFixedSize(self.popup.sizeHint())
         self.popup.mouseReleaseEvent = self.on_popup_release
 
     def on_popup_release(self, *args):
@@ -226,6 +251,13 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
     def activate_menu(self, reason):
         if reason != QSystemTrayIcon.Trigger:
             return
+        if self.menu.isVisible():
+            self.menu.close()
+            return True
+        if self.window.isVisible():
+            self.window.close()
+        if self.popup.isVisible():
+            self.popup.close()
         if self.icon.icon().cacheKey() == self.icon_urgent.cacheKey():
             self.clear_alarm()
             self.set_icon(self.icon_normal)
@@ -235,6 +267,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
             self.icon.setContextMenu(self.menu)
             self.icon.setContextMenu(None)
             return
+        self.menu.setFixedSize(self.menu.sizeHint())
         icon_pos = self.icon.geometry().bottomRight()
         pos = QPoint(QCursor.pos().x(), icon_pos.y())
         if icon_pos.y() > self.screen_height / 2:
@@ -246,6 +279,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         if sys.platform == 'darwin':
             clock_action = self.menu.actions[0]
             clock_action.activate(clock_action.Trigger)
+        self.window.setFixedSize(self.window.sizeHint())
         self.show_center(self.window)
 
     def activate_exit(self, *args):
@@ -259,6 +293,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.clock.setText(text)
 
     def show_popup(self):
+        self.menu.hide()
         self.show_center(self.popup)
 
     def is_menu_visible(self):

@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
+# sudo apt install v4l-utils
+
+import os
 import re
 import subprocess
 
-CAM = '/dev/video0'
+CAM1 = '/dev/video0'
+CAM2 = '/dev/video2'
+
+CAM = CAM2 if os.path.isfile(CAM2) else CAM1
 
 
 CTRL_RE = re.compile('\s+([a-z_]+)\s0x[0-9a-f]+\s\(([a-z]+)\)\s+:(.+)')
@@ -83,6 +89,8 @@ class V4l2Ctl(object):
             params = m.group(3)
             ctl_params = {}
             for p in params.split():
+                if '=' not in p:
+                    continue
                 k, v = p.split('=')
                 ctl_params[k] = v
             controls[ctl_name] = [ctl_type, ctl_params]
