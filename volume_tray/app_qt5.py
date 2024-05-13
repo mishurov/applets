@@ -25,7 +25,8 @@ from core import (
     SCROLL_BY
 )
 
-from sway_ipc import set_sway_for_window_qt
+# sway config 20 px is the height of the waybar (top)
+# for_window [app_id="^volume_tray$" floating] move position mouse, move down 20 px
 
 VOLUME_WIDTH = 250
 VOLUME_HEIGHT = 50
@@ -159,13 +160,6 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.update_icon()
         self.init_keys()
         self.media_key_pressed.connect(self.on_media_key_pressed)
-
-        set_sway_for_window_qt(
-            QMenu,
-            self.icon,
-            self.menu,
-            'app_id="^volume_tray$" floating',
-        )
 
         self.run()
 

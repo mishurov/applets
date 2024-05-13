@@ -27,11 +27,12 @@ from PyQt5.QtGui import QIcon, QWheelEvent, QPainter, QCursor
 
 from core import Brightness, UPower
 
-from sway_ipc import set_sway_for_window_qt
-
 # sudo cp ./90-brightness.rules /etc/udev/rules.d/
 # usermod -aG video ${USER}
 # reboot
+
+# sway config 20 px is the height of the waybar (top)
+# for_window [app_id="^power_tray$" floating] move position mouse, move down 20 px
 
 ICON_THEME = 'Adwaita-Xfce'
 
@@ -200,13 +201,6 @@ class PowerIcon(QObject):
 
         self.set_theme_icon('ac-adapter')
         self.setup_devices()
-
-        set_sway_for_window_qt(
-            QMenu,
-            self.icon,
-            self.menu,
-            'app_id="^power_tray$" floating',
-        )
 
         self.run()
 

@@ -36,7 +36,13 @@ from core import (
     DEFAULT_CLOCK,
 )
 
-from sway_ipc import set_sway_for_window_qt
+from sway_ipc import get_socket, command
+
+# sway config 20 px is the height of the waybar (top)
+# for_window [title="^ReminderContextMenu$" app_id="^reminder_tray$" floating] {
+#     move position mouse
+#     move down 20 px
+# }
 
 CLOCK_FONT_SIZE = 35
 SPINBOX_SPACING = 3
@@ -128,14 +134,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.setup_popup()
         self.setup_window()
 
-        title = WINDOW_TITLE + 'ContextMenu'
-        set_sway_for_window_qt(
-            QMenu,
-            self.icon,
-            self.menu,
-            f'title="^{title}$" app_id="^reminder_tray$" floating',
-        )
-
+        self.sock = get_socket()
         self.init_saved_alarm()
         self.idle()
         self.run()
@@ -224,7 +223,7 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.popup.setProperty('objectName', 'popup')
         self.popup.setWindowFlags(Qt.Sheet | Qt.Popup |
             Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
-        self.popup.setWindowTitle(WINDOW_TITLE)
+        self.popup.setWindowTitle(WINDOW_TITLE + 'Popup')
 
         if sys.platform == 'darwin':
             self.popup.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -283,6 +282,8 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.show_center(self.window)
 
     def activate_exit(self, *args):
+        if self.sock:
+            self.sock.close()
         os._exit(0)
 
     def set_icon(self, icon):
@@ -294,6 +295,8 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
 
     def show_popup(self):
         self.menu.hide()
+        if self.sock:
+            command(self.sock, 'fullscreen disable')
         self.show_center(self.popup)
 
     def is_menu_visible(self):

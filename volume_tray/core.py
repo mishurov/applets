@@ -309,6 +309,9 @@ class MediaKeysMixin(object):
     def init_keys(self):
         try:
             X11GlobalKeyListener(self.KEYSYMS, self.get_notify_callback())
-            self.init_notifications()
         except DisplayNameError as e:
             print(e, ". You're probably running Wayland")
+        try:
+            self.init_notifications()
+        except dbus.exceptions.DBusException as e:
+            print(e, '. Notification service error')

@@ -74,17 +74,3 @@ def get_workspaces(sock):
 def command(sock, cmd):
     sock.sendall(pack(MessageType.COMMAND, cmd))
     return read(sock)
-
-
-def set_sway_for_window_qt(QMenu, icon, menu, criteria):
-    sock = get_socket()
-    if sock is None:
-        return
-    fake_menu = QMenu()
-    fake_menu.addAction('Fuck Wayland')
-    icon.setContextMenu(fake_menu)
-    ws_w = get_workspaces(sock)[0]['rect']['width']
-    m_w = menu.sizeHint().width()
-    x = ws_w - m_w
-    command(sock, f'for_window [{criteria}] move position {x} 0')
-    sock.close()
