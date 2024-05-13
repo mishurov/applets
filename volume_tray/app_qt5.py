@@ -161,6 +161,11 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         self.init_keys()
         self.media_key_pressed.connect(self.on_media_key_pressed)
 
+        if os.environ.get('SWAYSOCK', None) is not None:
+            fake_menu = QMenu()
+            fake_menu.addAction('Fuck Wayland')
+            self.icon.setContextMenu(fake_menu)
+
         self.run()
 
     def get_pulse_callback(self):

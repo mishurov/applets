@@ -135,6 +135,11 @@ class Reminder(ShowCenterMixin, OsxMenuMixin, TimerMixin):
         self.setup_window()
 
         self.sock = get_socket()
+        if self.sock:
+            fake_menu = QMenu()
+            fake_menu.addAction('Fuck Wayland')
+            self.icon.setContextMenu(fake_menu)
+
         self.init_saved_alarm()
         self.idle()
         self.run()

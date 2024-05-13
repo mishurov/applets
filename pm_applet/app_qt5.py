@@ -202,6 +202,11 @@ class PowerIcon(QObject):
         self.set_theme_icon('ac-adapter')
         self.setup_devices()
 
+        if os.environ.get('SWAYSOCK', None) is not None:
+            fake_menu = QMenu()
+            fake_menu.addAction('Fuck Wayland')
+            self.icon.setContextMenu(fake_menu)
+
         self.run()
 
     def create_icon(self):
