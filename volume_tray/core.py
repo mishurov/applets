@@ -23,6 +23,7 @@ VOLUME_HEIGHT = 50
 
 PROFILE_ANALOG = "output:analog-stereo+input:analog-stereo"
 #PROFILE_ANALOG_PRO = "pro-audio"
+PROFILE_HDMI = "output:hdmi-stereo"
 PROFILE_HSP = "headset_head_unit"
 PROFILE_HSP_CVSD = "headset-head-unit-cvsd"
 PROFILE_HSP_MSBC = "headset-head-unit-msbc"
@@ -38,6 +39,7 @@ PROFILE_OFF = "off"
 PROFILE_MAP = {
     PROFILE_ANALOG: "Analog Duplex",
     #PROFILE_ANALOG_PRO: "Analog Pro",
+    PROFILE_HDMI: "HDMI Output",
     PROFILE_A2DP: "A2DP device default",
     PROFILE_A2DP2: "A2DP device default",
     PROFILE_A2DP_SBC: "A2DP SBC",
@@ -69,7 +71,7 @@ class PulseMixer(object):
         for card in self.cards:
             description = card.proplist.get('device.description')
             for profile in card.profile_list:
-                # print(profile.name)
+                #print(profile.name)
                 prof_key = PROFILE_MAP.get(profile.name, None)
                 if prof_key and profile.available:
                     key = description + '__' + prof_key
