@@ -217,13 +217,13 @@ class VolumeMixin(object):
                 dev = interfaces['org.bluez.Device1']
                 if not dev['Paired']:
                     continue
-                name = dev['Name']
+                name_upper = str(dev['Name']).upper()
                 batt = interfaces['org.bluez.Battery1']
                 if 'Percentage' not in batt:
                     continue
                 perc_bytes = bytes([batt['Percentage']])
                 perc_int = int.from_bytes(perc_bytes, 'little')
-                ret[name] = ' ∙ ' + str(perc_int) + '%'
+                ret[name_upper] = ' ∙ ' + str(perc_int) + '%'
         return ret
 
     def update_menu(self):
@@ -253,7 +253,7 @@ class VolumeMixin(object):
 
         for device in devices.values():
             name = device['name']
-            perc = batt_levels.get(name, '')
+            perc = batt_levels.get(name.upper(), '')
             label = name + perc
             self.insert_label_item(label, pos)
             pos += 1
