@@ -48,9 +48,19 @@ QMenu,QWidget#popup {
 }
 
 QWidget#popup > QLabel {
-  font-size: 65px;
+  font-size: 45pt;
 }
 
 QLabel {
   color: #ddd;
 }
+
+QMenu {
+  color: #ddd;
+}
+
+QMenu::item:selected {
+  color: #eee;
+  background-color: #f0544c;
+}
+

@@ -95,7 +95,7 @@ QSpinBox::disabled {
 }
 
 QSlider {
-  font-size: 13px;
+  font-size: 9.5pt;
   color: rgba(255, 255, 255, 50%);
   padding-left: 8px;
   padding-right: 8px;

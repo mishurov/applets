@@ -1,0 +1,9 @@
+QMenu {
+  color: #ddd;
+  background-color: #444;
+}
+
+QMenu::item:selected {
+  color: #eee;
+  background-color: #f0544c;
+}
