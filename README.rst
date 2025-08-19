@@ -153,6 +153,24 @@ i3 wm zoom patch
   sudo dpkg -i i3-wm_4.13-1\~bpo8+1_amd64.deb
   sudo apt-get -t jessie-backports install i3
 
+**From source, overwrite Debian Trixie** (4.24)
+
+.. code-block:: bash
+
+    sudo apt install i3
+    sudo apt build-dep i3
+
+    git clone https://github.com/i3/i3
+    git clone https://github.com/mishurov/applets
+    cd i3
+    git checkout 4.24
+    git apply ../applets/i3patch/files/add_zoom_i3_4.24.patch
+
+    meson setup build -Dprefix=/usr
+    # meson setup --reconfigure build -Dprefix=/usr
+    meson compile -C build
+    sudo meson install -C build
+
 PyQT
 ======
 
