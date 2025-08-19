@@ -1,3 +1,10 @@
+# sudo cp ./90-brightness.rules /etc/udev/rules.d/
+# usermod -aG video ${USER}
+# reboot
+
+# sway config 20 px is the height of the waybar (top)
+# for_window [app_id="^power_tray$" floating] move position mouse, move down 20 px
+
 import os
 import sys
 import signal
@@ -25,13 +32,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QWheelEvent, QPainter, QCursor, QAction
 
 from core import Brightness, UPower
-
-# sudo cp ./90-brightness.rules /etc/udev/rules.d/
-# usermod -aG video ${USER}
-# reboot
-
-# sway config 20 px is the height of the waybar (top)
-# for_window [app_id="^power_tray$" floating] move position mouse, move down 20 px
 
 ICON_THEME = 'Adwaita-Xfce'
 

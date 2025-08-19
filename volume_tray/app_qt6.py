@@ -1,3 +1,6 @@
+# sway config 20 px is the height of the waybar (top)
+# for_window [app_id="^volume_tray$" floating] move position mouse, move down 20 px
+
 import os
 import sys
 import signal
@@ -24,8 +27,6 @@ from core import (
     SCROLL_BY
 )
 
-# sway config 20 px is the height of the waybar (top)
-# for_window [app_id="^volume_tray$" floating] move position mouse, move down 20 px
 
 VOLUME_WIDTH = 250
 VOLUME_HEIGHT = 50
@@ -34,9 +35,9 @@ ICON_THEME = 'Adwaita-Xfce'
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 LINUX_CSS = os.path.join(FILE_DIR, 'linux.css')
 
+
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-print('Theme name', QIcon.themeName())
 
 class LabelledSlider(QSlider):
     SLIDER_H_PADDING = 20

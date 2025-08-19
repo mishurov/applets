@@ -4,6 +4,12 @@
 # /usr/local/bin/pip3 install -U PyObjC
 # mkdir ~/.cache
 
+# sway config 20 px is the height of the waybar (top)
+# for_window [title="^ReminderContextMenu$" app_id="^reminder_tray$" floating] {
+#     move position mouse
+#     move down 20 px
+# }
+
 import signal
 import os
 import sys
@@ -37,11 +43,6 @@ from core import (
 
 from sway_ipc import get_socket, command
 
-# sway config 20 px is the height of the waybar (top)
-# for_window [title="^ReminderContextMenu$" app_id="^reminder_tray$" floating] {
-#     move position mouse
-#     move down 20 px
-# }
 
 CLOCK_FONT_SIZE = 29
 SPINBOX_SPACING = 3
