@@ -221,13 +221,14 @@ class PowerIcon(QObject):
 
     def create_menu(self):
         self.menu = QMenu()
-        self.slider_item = SliderItem(self.menu)
-        self.slider_item.value_changed.connect(self.on_value_changed)
+        if self.brightness.intel_path_exists:
+            self.slider_item = SliderItem(self.menu)
+            self.slider_item.value_changed.connect(self.on_value_changed)
         exit_item = self.create_exit()
         manager_item = self.create_manager()
-
-        self.menu.addSeparator()
-        self.menu.addAction(self.slider_item)
+        if hasattr(self, 'slider_item'):
+            self.menu.addSeparator()
+            self.menu.addAction(self.slider_item)
         self.menu.addSeparator()
         self.menu.addAction(manager_item)
         self.menu.addAction(exit_item)
@@ -314,7 +315,8 @@ class PowerIcon(QObject):
             self.menu.close()
             return True
 
-        self.slider_item.setValue(int(self.brightness.current_percent))
+        if hasattr(self, 'slider_item'):
+            self.slider_item.setValue(int(self.brightness.current_percent))
         self.update_menu()
 
         self.menu.setFixedSize(self.menu.sizeHint())
@@ -337,6 +339,8 @@ class PowerIcon(QObject):
         self.device_actions = []
         self.devices = [battery, line_power] + misc
         for pos, d in enumerate(self.devices):
+            if d is None:
+                continue
             v = d['vendor']
             vendor = v + ' ' if len(v) else ''
             title = vendor + d['model']

@@ -87,6 +87,10 @@ class Brightness(object):
     path = Path('/sys/class/backlight/intel_backlight')
 
     @property
+    def intel_path_exists(self):
+        return self.path.exists()
+
+    @property
     def current(self) -> int:
         with open(self.path / 'actual_brightness') as f:
             return int(f.read().strip())
