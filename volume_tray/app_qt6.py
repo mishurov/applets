@@ -5,7 +5,7 @@ import os
 import sys
 import signal
 
-from PyQt6.QtCore import Qt, QPoint, QRect, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QPoint, QRect, pyqtSignal, QObject, QEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QSystemTrayIcon,
@@ -123,8 +123,10 @@ class SliderItem(QWidgetAction):
         self.rmb_clicked.emit()
 
     def setEnabled(self, enabled):
-        # super().setEnabled(enabled)
         self._slider.setEnabled(enabled)
+
+    def triggerLeave(self):
+        self._slider.leaveEvent(QEvent(QEvent.Type.MouseMove))
 
 
 class MenuItem(QWidgetAction):
@@ -229,6 +231,7 @@ class SoundIcon(QObject, VolumeMixin, MediaKeysMixin):
         if self.menu.isVisible():
             self.menu.close()
             return True
+        self.slider_item.triggerLeave()
         self.update_menu()
         volume, mute = self.mixer.get_sink_volume_and_mute()
         self.slider_item.setValue(int(volume))
