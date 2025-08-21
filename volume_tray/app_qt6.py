@@ -82,7 +82,8 @@ class LabelledSlider(QSlider):
         self.updateStyle()
 
     def event(self, e):
-        if e.type() == e.Type.MouseButtonRelease and e.button() == 2:
+        if (e.type() == e.Type.MouseButtonRelease
+            and e.button() == Qt.MouseButton.RightButton):
             self.rightButtonClicked.emit()
         return super().event(e)
 
