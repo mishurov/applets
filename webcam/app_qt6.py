@@ -159,8 +159,11 @@ class Dropdown(BaseControl, IgnoreWheel, QComboBox):
     def set_value(self, value):
         self.value = int(value)
         self.blockSignals(True)
-        index = list(self.options.keys()).index(str(self.value))
-        self.setCurrentIndex(index)
+        options = list(self.options.keys())
+        value_str = str(self.value)
+        if value_str in options:
+            index = options.index(value_str)
+            self.setCurrentIndex(index)
         self.blockSignals(False)
 
 
